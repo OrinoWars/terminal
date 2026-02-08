@@ -16,16 +16,16 @@ h1,
 h2,
 h3,
 p {
-  font-family: "Font1", sans-serif;
+  font-family: "Orbitron", "Exo 2", sans-serif;
 }
 
 .infoTable {
   width: 100%;
   margin-bottom: 20px;
   border-collapse: collapse;
-  border: 2px solid #459506;
+  border: 2px solid #00D9FF;
   background: rgba(0, 0, 0, 0.9);
-  box-shadow: 0 0 15px rgb(16 246 41 / 80%);
+  box-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
 
   th,
   td {
@@ -54,22 +54,23 @@ p {
 
 .card {
   padding: 30px;
-  border: 2px solid #2d8923;
+  border: 2px solid #00B8D4;
   border-radius: 20px;
   background: rgba(0, 0, 0, 0.9);
   display: inline-block;
   max-width: 100%;
   box-sizing: border-box;
+  box-shadow: 0 0 12px rgba(0, 217, 255, 0.3);
 }
 
 .tableContainer {
   max-height: 400px;
   overflow-y: auto;
-  box-shadow: 0 0 15px rgb(10 170 21 / 80%);
+  box-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
   padding: 0;
   width: 100%;
   scrollbar-width: thin;
-  scrollbar-color: #09c703 #000;
+  scrollbar-color: #00D9FF #000;
 }
 
 .tableContainer::-webkit-scrollbar {
@@ -77,7 +78,7 @@ p {
 }
 
 .tableContainer::-webkit-scrollbar-thumb {
-  background-color: #ff8a00;
+  background-color: #00D9FF;
 }
 
 .tableContainer::-webkit-scrollbar-track {
@@ -94,35 +95,57 @@ td {
   padding: 15px;
   border: 1px solid white;
   color: white;
-  font-family: "Font1", sans-serif;
+  font-family: "Rajdhani", sans-serif;
   font-size: 15px;
   text-align: center;
 }
 
 th {
-  background-color: #0e7206;
+  background-color: #006B7D;
 }
 
 .neonTitle {
   font-size: 60px;
   font-weight: bold!important;
   color: white!important;
-  text-shadow: 0 0 20px #15ff00, 0 0 40px #003516;
+  text-shadow: 0 0 12px rgba(0, 217, 255, 0.6), 0 0 20px rgba(0, 184, 212, 0.4);
 }
 
 .neonButton {
   padding: 12px 24px!important;
   border-radius: 12px!important;
-  border: 2px solid #79c569 !important;
-  background:linear-gradient(90deg, #237101, #0b3305) !important;
+  border: 2px solid #00F0FF !important;
+  background:linear-gradient(90deg, #00B8D4, #005F6B) !important;
   color: white!important;
   width: 300px;
   height: 50px!important;
   font-size: 20px;
   cursor: pointer!important;
-  box-shadow: 0 0 20px rgb(25 174 38 / 80%) !important;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 217, 255, 0.25) !important;
   text-transform: uppercase!important;
   display: flex!important;
   justify-content: center!important;
   align-items: center!important;
+}
+
+/* Animations for boost progress bars */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes glowMove {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }

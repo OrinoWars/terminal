@@ -17,7 +17,7 @@ export const GlobalStyle = createGlobalStyle`
     }
 
     body {
-        font-family: 'Poppins', sans-serif;
+        font-family: 'Orbitron', 'Exo 2', sans-serif;
         color: white;
     }
 `;
@@ -28,30 +28,10 @@ export const Container = styled.div`
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  width: 50%;
   margin: auto;
+  width: 70%;
   text-align: center;
   overflow: auto; /* Scroll için eklendi */
-
-  @media (max-width: 1550px) {
-    width: 60%;
-  }
-
-  @media (max-width: 1070px) {
-    width: 80%;
-  }
-
-  @media (max-width: 830px) {
-    width: 90%;
-  }
-
-  @media (max-width: 766px) {
-    width: 80%;
-  }
-
-  @media (max-width: 629px) {
-    width: 100%;
-  }
 `;
 
 export const Button = styled.button`
