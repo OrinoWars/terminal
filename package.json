@@ -1,0 +1,41 @@
+{
+  "name": "rent-calculator",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@walletconnect/web3-provider": "^1.8.0",
+    "axios": "^1.7.9",
+    "cra-template": "1.2.0",
+    "ethers": "^6.13.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-ga4": "^2.1.0",
+    "react-scripts": "5.0.1",
+    "styled-components": "^6.1.14",
+    "web3modal": "^1.9.12"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

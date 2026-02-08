@@ -1,0 +1,128 @@
+#WEB3_CONNECT_MODAL_ID {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+@font-face {
+  font-family: "Font1";
+  src: url("/src/fonts/font1.ttf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+body,
+button,
+h1,
+h2,
+h3,
+p {
+  font-family: "Font1", sans-serif;
+}
+
+.infoTable {
+  width: 100%;
+  margin-bottom: 20px;
+  border-collapse: collapse;
+  border: 2px solid #459506;
+  background: rgba(0, 0, 0, 0.9);
+  box-shadow: 0 0 15px rgb(16 246 41 / 80%);
+
+  th,
+  td {
+    border: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .infoTable {
+    display: none;
+  }
+
+  .card {
+    max-width: 90% !important;
+  }
+
+  .neonTitle {
+    font-size: 30px !important;
+  }
+
+  .neonButton {
+    width: 200px !important;
+    font-size: 15px !important;
+  }
+}
+
+.card {
+  padding: 30px;
+  border: 2px solid #2d8923;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  display: inline-block;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.tableContainer {
+  max-height: 400px;
+  overflow-y: auto;
+  box-shadow: 0 0 15px rgb(10 170 21 / 80%);
+  padding: 0;
+  width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #09c703 #000;
+}
+
+.tableContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tableContainer::-webkit-scrollbar-thumb {
+  background-color: #ff8a00;
+}
+
+.tableContainer::-webkit-scrollbar-track {
+  background: #000;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 15px;
+  border: 1px solid white;
+  color: white;
+  font-family: "Font1", sans-serif;
+  font-size: 15px;
+  text-align: center;
+}
+
+th {
+  background-color: #0e7206;
+}
+
+.neonTitle {
+  font-size: 60px;
+  font-weight: bold!important;
+  color: white!important;
+  text-shadow: 0 0 20px #15ff00, 0 0 40px #003516;
+}
+
+.neonButton {
+  padding: 12px 24px!important;
+  border-radius: 12px!important;
+  border: 2px solid #79c569 !important;
+  background:linear-gradient(90deg, #237101, #0b3305) !important;
+  color: white!important;
+  width: 300px;
+  height: 50px!important;
+  font-size: 20px;
+  cursor: pointer!important;
+  box-shadow: 0 0 20px rgb(25 174 38 / 80%) !important;
+  text-transform: uppercase!important;
+  display: flex!important;
+  justify-content: center!important;
+  align-items: center!important;
+}

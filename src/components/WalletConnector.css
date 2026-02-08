@@ -1,0 +1,49 @@
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid white;
+    border-top: 3px solid #00ff33;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.neonButton:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    text-align: center;
+    background: #000;
+}
+
+.walletInput {
+    color: white !important;
+}
+
+.walletInput::placeholder {
+    color: white !important;
+    opacity: 1;
+}
+
+@media (max-width: 500px) {
+    .walletInput {
+        width: 85% !important;
+        font-size: 15px !important;
+    }
+}
