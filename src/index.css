@@ -112,20 +112,24 @@ th {
 }
 
 .neonButton {
-  padding: 12px 24px!important;
-  border-radius: 12px!important;
-  border: 2px solid #00F0FF !important;
-  background:linear-gradient(90deg, #00B8D4, #005F6B) !important;
-  color: white!important;
-  width: 300px;
-  height: 50px!important;
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: 2px solid #00F0FF;
+  background: linear-gradient(90deg, #00B8D4, #005F6B);
+  color: white;
   font-size: 20px;
-  cursor: pointer!important;
-  box-shadow: 0 0 12px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 217, 255, 0.25) !important;
-  text-transform: uppercase!important;
-  display: flex!important;
-  justify-content: center!important;
-  align-items: center!important;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 217, 255, 0.25);
+  text-transform: uppercase;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.4s ease;
+}
+
+.neonButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.7), 0 0 30px rgba(0, 217, 255, 0.4);
 }
 
 /* Animations for boost progress bars */

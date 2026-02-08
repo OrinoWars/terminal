@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from "react";
 import blacklistedWallets from "../data/blacklisted-wallets.json";
-import { MdAccessTime, MdShowChart, MdWarning } from "react-icons/md";
+import resetDates from "../data/reset-dates.json";
+import { MdAccessTime, MdShowChart, MdWarning, MdInfo } from "react-icons/md";
 import { HiLink } from "react-icons/hi";
 import { FaClock } from "react-icons/fa";
+import { TbHexagon, TbAtom, TbSun, TbAntenna, TbBolt, TbStarFilled } from 'react-icons/tb';
+import { IoCheckmarkCircle } from 'react-icons/io5';
 
 const NFTDisplay = ({ nfts, walletAddress }) => {
-  // Canlı saat için state
+  // Live timer state
   const [liveTimer, setLiveTimer] = useState({
     weeks: 0,
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  });
+
+  // Payment countdown state
+  const [paymentCountdown, setPaymentCountdown] = useState({
     days: 0,
     hours: 0,
     minutes: 0,
@@ -23,24 +34,33 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
   };
 
   const nodeTypeNames = {
-    6: "🔹 NANO",
-    9: "🟢 ISOTOPE",
-    12: "🔸 SOLAR",
-    16: "🟣 VOID RELAY",
-    20: "🔴 PLASMA RELAY",
-    24: "⚪ SINGULARITY",
+    6: "NANO",
+    9: "ISOTOPE",
+    12: "SOLAR",
+    16: "VOID RELAY",
+    20: "PLASMA RELAY",
+    24: "SINGULARITY",
   };
 
-  // Kullanıcı blacklist'te mi kontrol et
+  const nodeTypeIcons = {
+    6: TbHexagon,
+    9: TbAtom,
+    12: TbSun,
+    16: TbAntenna,
+    20: TbBolt,
+    24: TbStarFilled,
+  };
+
+  // Check if user is blacklisted
   const isBlacklisted = blacklistedWallets.blacklistedWallets
     .some(addr => addr.toLowerCase() === walletAddress.toLowerCase());
 
-  // EN ESKİ NFT'nin transfer tarihini bul (en yüksek daysInWallet)
+  // Find OLDEST NFT transfer date (highest daysInWallet)
   const oldestNFTDays = nfts.length > 0 
     ? Math.max(...nfts.map(nft => nft.daysInWallet || 0))
     : 0;
 
-  // En eski NFT'nin transfer tarihini al
+  // Get oldest NFT's transfer date
   const oldestNFT = nfts.length > 0
     ? nfts.reduce((oldest, nft) => 
         (nft.daysInWallet || 0) > (oldest.daysInWallet || 0) ? nft : oldest
@@ -67,7 +87,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
 
   const averageNodePower = (totalNodePower / nfts.length).toFixed(2);
 
-  // Node tiplerini say (TÜM NFT'ler)
+  // Count node types (ALL NFTs)
   const nodeTypeCounts = {};
   nfts.forEach(nft => {
     const nodeType = parseInt(
@@ -78,7 +98,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
     nodeTypeCounts[nodeType] = (nodeTypeCounts[nodeType] || 0) + 1;
   });
 
-  // Node tipi başına toplam gelir (tüm NFT'ler)
+  // Total income per node type (all NFTs)
   const nodeTypeIncomes = {};
   nfts.forEach(nft => {
     const nodeType = parseInt(
@@ -101,10 +121,10 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
     return 0;
   };
 
-  // 1. Signal Stability (Uptime Bonus) - En eski NFT'nin süresine göre
+  // 1. Signal Stability (Uptime Bonus) - Based on oldest NFT's duration
   const uptimeBonus = isBlacklisted ? 0 : getUptimeBonus(oldestNFTDays);
 
-  // 2. Hexa-Link (Cluster Bonus) - Tam setler (tüm NFT'ler dahil)
+  // 2. Hexa-Link (Cluster Bonus) - Complete sets (all NFTs included)
   const hasAllTypes = allNodeTypes.every(type => nodeTypeCounts[type] > 0);
   const completeSets = hasAllTypes 
     ? Math.min(...allNodeTypes.map(type => nodeTypeCounts[type] || 0))
@@ -128,7 +148,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
   // Toplam gelir = Base income * boost multiplier
   const totalFinalIncome = baseIncome * totalBoostMultiplier;
 
-  // Canlı saat güncelleme
+  // Live timer update
   useEffect(() => {
     if (!oldestNFT?.transferDate) return;
 
@@ -152,11 +172,53 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
       });
     };
 
-    updateTimer(); // İlk çalıştırma
-    const interval = setInterval(updateTimer, 1000); // Her saniye güncelle
+    updateTimer(); // Initial run
+    const interval = setInterval(updateTimer, 1000); // Update every second
 
     return () => clearInterval(interval);
   }, [oldestNFT?.transferDate]);
+
+  // Payment countdown update
+  useEffect(() => {
+    const updatePaymentCountdown = () => {
+      const now = Date.now();
+      
+      // First payment: Feb 17, 2026 15:00 UTC
+      const firstPayment = new Date('2026-02-17T15:00:00.000Z').getTime();
+      
+      // Calculate which payment cycle we're in
+      const weekInMs = 7 * 24 * 60 * 60 * 1000;
+      let nextPaymentDate;
+      
+      if (now < firstPayment) {
+        nextPaymentDate = firstPayment;
+      } else {
+        const weeksPassed = Math.floor((now - firstPayment) / weekInMs);
+        nextPaymentDate = firstPayment + ((weeksPassed + 1) * weekInMs);
+      }
+      
+      const diffMs = nextPaymentDate - now;
+      
+      if (diffMs > 0) {
+        const seconds = Math.floor(diffMs / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        
+        setPaymentCountdown({
+          days: days,
+          hours: hours % 24,
+          minutes: minutes % 60,
+          seconds: seconds % 60
+        });
+      }
+    };
+    
+    updatePaymentCountdown(); // Initial run
+    const interval = setInterval(updatePaymentCountdown, 1000); // Update every second
+    
+    return () => clearInterval(interval);
+  }, []);
 
   console.log(`Wallet: ${walletAddress}`);
   console.log(`Blacklisted: ${isBlacklisted ? '❌ YES' : '✅ NO'}`);
@@ -165,10 +227,13 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
 
   return (
     <div style={styles.container}>
-      <h1 className="neonTitle" style={styles.mainTitle}>NODE TERMINAL</h1>
+      <div style={styles.titleSection}>
+        <div style={styles.brandTitle}>ORION WARS</div>
+        <h1 className="neonTitle" style={styles.mainTitle}>NODE TERMINAL</h1>
+      </div>
       
       <div style={styles.mainContainer}>
-        {/* Node Tip Kutular Grid */}
+        {/* Node Type Boxes Grid */}
         <div style={styles.nodeGrid}>
           {allNodeTypes.map(nodeType => {
             const count = nodeTypeCounts[nodeType] || 0;
@@ -184,6 +249,11 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                   border: isOwned ? '2px solid #00D9FF' : '2px solid #0088DD',
                 }}
               >
+                <div style={styles.nodeIcon}>
+                  {React.createElement(nodeTypeIcons[nodeType], { 
+                    style: { fontSize: '48px', color: '#00E5FF' }
+                  })}
+                </div>
                 <div style={styles.nodeTypeName}>
                   {nodeTypeNames[nodeType]}
                 </div>
@@ -198,7 +268,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
           })}
         </div>
 
-        {/* Alt Bilgi Paneli */}
+        {/* Summary Panel */}
         <div style={styles.summaryPanel}>
           <div style={styles.summaryBox}>
             <div style={styles.summaryLabel}>TOTAL MONTHLY USDC YIELD</div>
@@ -225,10 +295,15 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
             <div style={styles.boostProtocolTitle}>
               <MdShowChart style={{fontSize: '24px', verticalAlign: 'middle', marginRight: '8px'}} />
               LOYALTY & EFFICIENCY PROTOCOLS
-              {isBlacklisted ? (
-                <span style={{color: '#FF4444', marginLeft: '15px'}}>❌ DISABLED</span>
-              ) : (
-                <span style={{color: '#00FF88', marginLeft: '15px'}}>✅ ACTIVE</span>
+              {nfts.length > 0 && (
+                isBlacklisted ? (
+                  <span style={{color: '#FF4444', marginLeft: '15px'}}>❌ DISABLED</span>
+                ) : (
+                  <span style={{color: '#00FF88', marginLeft: '15px'}}>
+                    <IoCheckmarkCircle style={{fontSize: '20px', verticalAlign: 'middle', marginRight: '5px'}} />
+                    ACTIVE
+                  </span>
+                )
               )}
             </div>
 
@@ -266,21 +341,6 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
               </div>
             </div>
 
-            {/* Critical Warning Box */}
-            <div style={styles.warningBox}>
-              <div style={styles.warningIcon}>
-                <MdWarning style={{fontSize: '36px', color: '#FF6666'}} />
-              </div>
-              <div style={styles.warningContent}>
-                <div style={styles.warningTitle}>CRITICAL NOTICE</div>
-                <div style={styles.warningText}>
-                  Listing <span style={{fontWeight: 'bold', color: '#FF6666'}}>ANY</span> node will <span style={{fontWeight: 'bold', color: '#FF6666'}}>DISABLE ALL BOOSTS</span> for your <span style={{fontWeight: 'bold', color: '#FF6666'}}>ENTIRE COLLECTION</span> and reset your <span style={{fontWeight: 'bold', color: '#FF6666'}}>SIGNAL STABILITY</span> to <span style={{fontWeight: 'bold', color: '#FF6666'}}>ZERO</span>.
-                  <br/><br/>
-                  Your Signal Stability will remain at 0 days until you delist. Upon delisting, Signal Stability starts from day 0 — your previous holding period is <span style={{fontWeight: 'bold', color: '#FF6666'}}>NOT</span> restored.
-                </div>
-              </div>
-            </div>
-            
             <div style={styles.boostGridSingleColumn}>
               {/* Signal Stability - Full Width */}
               <div style={{
@@ -337,9 +397,9 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                     <div style={{
                       ...styles.progressFillLarge,
                       width: `${Math.min((oldestNFTDays / 30) * 100, 100)}%`,
-                      opacity: isBlacklisted ? 0.4 : 1,
+                      opacity: isBlacklisted || nfts.length === 0 ? 0.4 : 1,
                     }}>
-                      <div style={styles.progressGlow}></div>
+                      {nfts.length > 0 && <div style={styles.progressGlow}></div>}
                     </div>
                     
                     {/* Milestone markers - Vertical lines */}
@@ -363,6 +423,14 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                       <div style={{...styles.milestoneBonus, color: oldestNFTDays >= 30 && !isBlacklisted ? '#00FF88' : '#666'}}>+20%</div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Signal Stability Info Note */}
+              <div style={styles.infoNote}>
+                <MdInfo style={{fontSize: '18px', color: '#4DD0E1', marginRight: '8px', flexShrink: 0}} />
+                <div style={styles.infoNoteText}>
+                  Our system scans all Nodes 6 times daily at random intervals. If any marketplace listing is detected during a scan, all boosts will be immediately disabled.
                 </div>
               </div>
 
@@ -399,6 +467,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                   {allNodeTypes.map(type => {
                     const hasType = nodeTypeCounts[type] > 0;
                     const count = nodeTypeCounts[type] || 0;
+                    const NodeIcon = nodeTypeIcons[type];
                     return (
                       <div 
                         key={type}
@@ -409,8 +478,8 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                           boxShadow: hasType && !isBlacklisted ? '0 0 12px rgba(0, 255, 136, 0.4)' : 'none',
                         }}
                       >
-                        <div style={styles.hexaIconEmoji}>{nodeTypeNames[type].split(' ')[0]}</div>
-                        <div style={styles.hexaIconName}>{nodeTypeNames[type].split(' ').slice(1).join(' ')}</div>
+                        <NodeIcon style={{fontSize: '32px', color: hasType && !isBlacklisted ? '#00E5FF' : '#666'}} />
+                        <div style={styles.hexaIconName}>{nodeTypeNames[type]}</div>
                         <div style={{
                           ...styles.hexaIconCount,
                           color: hasType && !isBlacklisted ? '#00FF88' : '#666',
@@ -430,6 +499,54 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                 </div>
               </div>
             </div>
+
+            {/* Critical Warning Box */}
+            <div style={styles.warningBox}>
+              <div style={styles.warningIcon}>
+                <MdWarning style={{fontSize: '36px', color: '#FF6666'}} />
+              </div>
+              <div style={styles.warningContent}>
+                <div style={styles.warningTitle}>CRITICAL NOTICE</div>
+                <div style={styles.warningText}>
+                  Listing <span style={{fontWeight: 'bold', color: '#FF6666'}}>ANY</span> node will <span style={{fontWeight: 'bold', color: '#FF6666'}}>DISABLE ALL BOOSTS</span> for your <span style={{fontWeight: 'bold', color: '#FF6666'}}>ENTIRE COLLECTION</span> and reset your <span style={{fontWeight: 'bold', color: '#FF6666'}}>SIGNAL STABILITY</span> to <span style={{fontWeight: 'bold', color: '#FF6666'}}>ZERO</span>.
+                  <br/><br style={{lineHeight: '0.2', margin: '0', display: 'block', height: '4px'}}/>
+                  Your Signal Stability will remain at 0 days until you delist. Upon delisting, Signal Stability starts from day 0 — your previous holding period is <span style={{fontWeight: 'bold', color: '#FF6666'}}>NOT</span> restored.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Next Payment Countdown Section - Separate Box */}
+          <div style={styles.paymentSection}>
+            <div style={styles.paymentTitle}>
+              <FaClock style={{fontSize: '20px', verticalAlign: 'middle', marginRight: '10px'}} />
+              NEXT PAYMENT IN
+            </div>
+            <div style={styles.paymentCountdownContainer}>
+              <div style={styles.paymentTimerBlock}>
+                <div style={styles.paymentTimerValue}>{paymentCountdown.days}</div>
+                <div style={styles.paymentTimerLabel}>DAYS</div>
+              </div>
+              <div style={styles.paymentTimerSeparator}>:</div>
+              <div style={styles.paymentTimerBlock}>
+                <div style={styles.paymentTimerValue}>{paymentCountdown.hours}</div>
+                <div style={styles.paymentTimerLabel}>HOURS</div>
+              </div>
+              <div style={styles.paymentTimerSeparator}>:</div>
+              <div style={styles.paymentTimerBlock}>
+                <div style={styles.paymentTimerValue}>{paymentCountdown.minutes}</div>
+                <div style={styles.paymentTimerLabel}>MINUTES</div>
+              </div>
+              <div style={styles.paymentTimerSeparator}>:</div>
+              <div style={styles.paymentTimerBlock}>
+                <div style={styles.paymentTimerValue}>{paymentCountdown.seconds}</div>
+                <div style={styles.paymentTimerLabel}>SECONDS</div>
+              </div>
+            </div>
+            <div style={styles.paymentInfo}>
+              <MdInfo style={{fontSize: '18px', color: '#4DD0E1', marginRight: '8px', verticalAlign: 'middle'}} />
+              Your payment will be automatically sent to the wallet address holding your Node NFTs.
+            </div>
           </div>
 
           <div style={styles.statsRow}>
@@ -439,17 +556,33 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
             </div>
             <div style={styles.statBox}>
               <div style={styles.statLabel}>AVG NODE POWER</div>
-              <div style={styles.statValue}>{averageNodePower}</div>
+              <div style={styles.statValue}>{nfts.length > 0 ? averageNodePower : '0'}</div>
             </div>
             <div style={styles.statBox}>
               <div style={styles.statLabel}>BOOST STATUS</div>
               <div style={{
                 ...styles.statValue,
                 fontSize: '32px',
-                color: isBlacklisted ? '#FF4444' : '#00FF88',
-                textShadow: isBlacklisted ? '0 0 10px rgba(255, 68, 68, 0.5)' : '0 0 12px rgba(0, 255, 136, 0.5)',
+                color: nfts.length === 0 ? '#888' : (isBlacklisted ? '#FF4444' : '#00FF88'),
+                textShadow: nfts.length === 0 ? 'none' : (isBlacklisted ? '0 0 10px rgba(255, 68, 68, 0.5)' : '0 0 12px rgba(0, 255, 136, 0.5)'),
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                justifyContent: 'center',
               }}>
-                {isBlacklisted ? '❌ DISABLED' : '✅ ACTIVE'}
+                {nfts.length === 0 ? (
+                  '-'
+                ) : isBlacklisted ? (
+                  <>
+                    <MdWarning style={{fontSize: '28px'}} />
+                    DISABLED
+                  </>
+                ) : (
+                  <>
+                    <IoCheckmarkCircle style={{fontSize: '28px'}} />
+                    ACTIVE
+                  </>
+                )}
               </div>
             </div>
             <div style={styles.statBox}>
@@ -480,8 +613,24 @@ const styles = {
     padding: "40px 10px",
     minHeight: "100vh",
   },
+  titleSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '50px',
+  },
+  brandTitle: {
+    fontSize: '20px',
+    fontWeight: '600',
+    color: '#00D9FF',
+    textShadow: '0 0 10px rgba(0, 217, 255, 0.5)',
+    fontFamily: 'Rajdhani',
+    letterSpacing: '4px',
+    textTransform: 'uppercase',
+  },
   mainTitle: {
-    marginBottom: "50px",
+    marginBottom: '0',
   },
   mainContainer: {
     width: "100%",
@@ -507,6 +656,9 @@ const styles = {
     alignItems: "center",
     gap: "12px",
     transition: "all 0.3s ease",
+  },
+  nodeIcon: {
+    marginBottom: "10px",
   },
   nodeTypeName: {
     fontSize: "18px",
@@ -581,10 +733,10 @@ const styles = {
   },
   boostProtocolPanel: {
     padding: "30px",
-    border: "2px solid #00FF88",
+    border: "2px solid #00D9FF",
     borderRadius: "15px",
-    background: "linear-gradient(135deg, rgba(0, 40, 20, 0.5), rgba(0, 20, 10, 0.7))",
-    boxShadow: "0 0 15px rgba(0, 255, 136, 0.25)",
+    background: "linear-gradient(180deg, rgba(0, 30, 80, 0.5), rgba(0, 20, 60, 0.7))",
+    boxShadow: "0 0 10px rgba(0, 136, 221, 0.3), inset 0 0 8px rgba(0, 136, 221, 0.05)",
   },
   boostProtocolTitle: {
     fontSize: "18px",
@@ -598,12 +750,13 @@ const styles = {
   },
   warningBox: {
     display: "flex",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: "15px",
     padding: "20px",
     background: "linear-gradient(135deg, rgba(80, 20, 20, 0.6), rgba(60, 10, 10, 0.8))",
     border: "2px solid #FF4444",
     borderRadius: "12px",
+    marginTop: "20px",
     marginBottom: "25px",
     boxShadow: "0 0 15px rgba(255, 68, 68, 0.3)",
   },
@@ -611,6 +764,7 @@ const styles = {
     fontSize: "32px",
     lineHeight: "1",
     flexShrink: 0,
+    alignSelf: "center",
   },
   warningContent: {
     flex: 1,
@@ -626,7 +780,7 @@ const styles = {
     textShadow: "0 0 8px rgba(255, 102, 102, 0.5)",
   },
   warningText: {
-    fontSize: "15px",
+    fontSize: "16px",
     color: "#FFB3B3",
     lineHeight: "1.6",
     fontFamily: "Rajdhani",
@@ -970,6 +1124,96 @@ const styles = {
     color: "white",
     textShadow: "0 0 12px rgba(0, 217, 255, 0.5)",
     fontFamily: "Font1, sans-serif",
+  },
+  infoNote: {
+    marginTop: "15px",
+    padding: "12px 15px",
+    background: "rgba(0, 136, 221, 0.15)",
+    border: "1px solid rgba(0, 136, 221, 0.4)",
+    borderRadius: "8px",
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "10px",
+  },
+  infoNoteText: {
+    fontSize: "14px",
+    color: "#4DD0E1",
+    fontFamily: "Rajdhani",
+    fontWeight: "500",
+    lineHeight: "1.5",
+    flex: 1,
+  },
+  paymentSection: {
+    marginTop: "20px",
+    padding: "30px",
+    border: "2px solid #00D9FF",
+    borderRadius: "15px",
+    background: "linear-gradient(180deg, rgba(0, 30, 80, 0.5), rgba(0, 20, 60, 0.7))",
+    boxShadow: "0 0 10px rgba(0, 136, 221, 0.3), inset 0 0 8px rgba(0, 136, 221, 0.05)",
+  },
+  paymentTitle: {
+    fontSize: "20px",
+    fontWeight: "bold",
+    color: "#00FF88",
+    textShadow: "0 0 10px rgba(0, 255, 136, 0.5)",
+    fontFamily: "Font1, sans-serif",
+    marginBottom: "20px",
+    textAlign: "center",
+    letterSpacing: "2px",
+  },
+  paymentCountdownContainer: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "15px",
+    marginBottom: "20px",
+  },
+  paymentTimerBlock: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "15px 20px",
+    background: "rgba(0, 0, 0, 0.4)",
+    borderRadius: "10px",
+    border: "2px solid rgba(0, 217, 255, 0.3)",
+    minWidth: "90px",
+  },
+  paymentTimerValue: {
+    fontSize: "36px",
+    fontWeight: "bold",
+    color: "#00FF88",
+    textShadow: "0 0 12px rgba(0, 255, 136, 0.6)",
+    fontFamily: "Font1, sans-serif",
+    lineHeight: "1",
+  },
+  paymentTimerLabel: {
+    fontSize: "11px",
+    color: "#00D9FF",
+    textTransform: "uppercase",
+    letterSpacing: "1px",
+    fontFamily: "Rajdhani",
+    marginTop: "8px",
+  },
+  paymentTimerSeparator: {
+    fontSize: "36px",
+    fontWeight: "bold",
+    color: "#00D9FF",
+    textShadow: "0 0 10px rgba(0, 217, 255, 0.5)",
+    fontFamily: "Font1, sans-serif",
+  },
+  paymentInfo: {
+    fontSize: "15px",
+    color: "#4DD0E1",
+    fontFamily: "Rajdhani",
+    fontWeight: "500",
+    textAlign: "center",
+    padding: "12px 20px",
+    background: "rgba(0, 136, 221, 0.15)",
+    border: "1px solid rgba(0, 136, 221, 0.4)",
+    borderRadius: "8px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
 };
 

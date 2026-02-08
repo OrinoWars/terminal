@@ -4,7 +4,7 @@ import metadataList from "../data/metadata.json";
 const ALCH_API_KEY = "Jp-feQgo9puqkhqfBKTzJDv99zMK1n3g";
 const contractAddress = "0xBD29d460a390B4Da8C1b7FAD160f2587E8AEB811";
 
-// NFT'nin cüzdanda kalma süresini hesapla
+// Calculate NFT holding duration in wallet
 export const getNFTTransferHistory = async (tokenId, ownerAddress, allTransfers) => {
   try {
     const tokenIdShortHex = `0x${parseInt(tokenId).toString(16)}`;
@@ -24,20 +24,17 @@ export const getNFTTransferHistory = async (tokenId, ownerAddress, allTransfers)
       const transferDate = new Date(lastTransferToOwner.metadata.blockTimestamp);
       const daysInWallet = Math.floor((Date.now() - transferDate.getTime()) / (1000 * 60 * 60 * 24));
       
-      console.log(`Token #${tokenId}: ✓ ${daysInWallet} days since transfer (${transferDate.toISOString()})`);
       return {
         daysInWallet: Math.max(0, daysInWallet),
         transferDate: transferDate
       };
     }
     
-    console.log(`Token #${tokenId}: ⚠️ No transfer found, defaulting to 0 days`);
     return {
       daysInWallet: 0,
       transferDate: null
     };
   } catch (error) {
-    console.error(`Token #${tokenId}: ✗ Error:`, error.message);
     return {
       daysInWallet: 0,
       transferDate: null
@@ -55,16 +52,10 @@ export const getNFTs = async (walletAddress) => {
       throw new Error("Invalid wallet address provided.");
     }
 
-    if (!Array.isArray(metadataList) || metadataList.length === 0) {
-      console.warn("Warning: metadataList is empty or invalid.");
-    }
-
-    console.log("🚀 Starting NFT fetch...");
-
     let allNFTs = [];
     let pageKey = null;
 
-    // 1. Cüzdandaki NFT'leri çek
+    // 1. Fetch NFTs from wallet
     do {
       const url = `https://eth-sepolia.g.alchemy.com/nft/v2/${ALCH_API_KEY}/getNFTs/`;
 
@@ -98,9 +89,7 @@ export const getNFTs = async (walletAddress) => {
       pageKey = response.data.pageKey || null;
     } while (pageKey);
 
-    console.log(`📦 Found ${allNFTs.length} NFTs in wallet`);
-
-    // 2. Transfer history çek (tek seferde tüm contract için)
+    // 2. Fetch transfer history (single call for entire contract)
     const transferUrl = `https://eth-sepolia.g.alchemy.com/v2/${ALCH_API_KEY}`;
     const transferResponse = await axios.post(transferUrl, {
       jsonrpc: "2.0",
@@ -118,18 +107,14 @@ export const getNFTs = async (walletAddress) => {
     });
 
     const allTransfers = transferResponse.data.result?.transfers || [];
-    console.log(`📋 Fetched ${allTransfers.length} total transfers`);
 
-    // 3. Her NFT için hold duration hesapla
-    console.log(`🔄 Calculating hold duration for ${allNFTs.length} NFTs...`);
-    
+    // 3. Calculate hold duration for each NFT
     for (let nft of allNFTs) {
       const transferInfo = await getNFTTransferHistory(nft.tokenId, walletAddress, allTransfers);
       nft.daysInWallet = transferInfo.daysInWallet;
       nft.transferDate = transferInfo.transferDate;
     }
 
-    console.log(`✅ Completed! Total NFTs: ${allNFTs.length}`);
     return allNFTs;
   } catch (error) {
     console.error("Error fetching NFTs from Alchemy:", error.message);

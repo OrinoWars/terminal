@@ -5,7 +5,7 @@ import NFTDisplay from './components/NFTDisplay';
 import { GlobalStyle } from './styles/StyledComponents';
 import ReactGA from "react-ga4";
 
-ReactGA.initialize("G-N45FD4FT87");
+ReactGA.initialize("G-JD0KTJ6HVM");
 
 const App = () => {
     const [nfts, setNfts] = useState([]);
