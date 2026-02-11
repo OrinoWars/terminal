@@ -10,24 +10,31 @@ export const getNFTTransferHistory = async (tokenId, ownerAddress, allTransfers)
     const tokenIdShortHex = `0x${parseInt(tokenId).toString(16)}`;
     const tokenIdLongHex = `0x${parseInt(tokenId).toString(16).padStart(64, '0')}`;
     
+    // Filter transfers for this specific token
     const tokenTransfers = allTransfers.filter(t => {
       const apiTokenId = (t.erc721TokenId || t.tokenId || '').toLowerCase();
       return apiTokenId === tokenIdShortHex.toLowerCase() || 
              apiTokenId === tokenIdLongHex.toLowerCase();
     });
 
-    const lastTransferToOwner = tokenTransfers.find(t => 
+    // Find all transfers TO this owner (sorted desc, so last in array is oldest)
+    const transfersToOwner = tokenTransfers.filter(t => 
       t.to && t.to.toLowerCase() === ownerAddress.toLowerCase()
     );
 
-    if (lastTransferToOwner && lastTransferToOwner.metadata && lastTransferToOwner.metadata.blockTimestamp) {
-      const transferDate = new Date(lastTransferToOwner.metadata.blockTimestamp);
-      const daysInWallet = Math.floor((Date.now() - transferDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (transfersToOwner.length > 0) {
+      // Get the LAST transfer to owner (oldest, since order is desc)
+      const oldestTransferToOwner = transfersToOwner[transfersToOwner.length - 1];
       
-      return {
-        daysInWallet: Math.max(0, daysInWallet),
-        transferDate: transferDate
-      };
+      if (oldestTransferToOwner.metadata && oldestTransferToOwner.metadata.blockTimestamp) {
+        const transferDate = new Date(oldestTransferToOwner.metadata.blockTimestamp);
+        const daysInWallet = Math.floor((Date.now() - transferDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        return {
+          daysInWallet: Math.max(0, daysInWallet),
+          transferDate: transferDate.toISOString()
+        };
+      }
     }
     
     return {
@@ -89,7 +96,7 @@ export const getNFTs = async (walletAddress) => {
       pageKey = response.data.pageKey || null;
     } while (pageKey);
 
-    // 2. Fetch transfer history (single call for entire contract)
+    // 2. Fetch transfer history for this wallet only
     const transferUrl = `https://eth-mainnet.g.alchemy.com/v2/${ALCH_API_KEY}`;
     const transferResponse = await axios.post(transferUrl, {
       jsonrpc: "2.0",
@@ -98,6 +105,7 @@ export const getNFTs = async (walletAddress) => {
       params: [{
         fromBlock: "0x0",
         toBlock: "latest",
+        toAddress: walletAddress.toLowerCase(), // Only transfers TO this wallet
         contractAddresses: [contractAddress],
         category: ["erc721"],
         withMetadata: true,

@@ -191,43 +191,43 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
 
   // Live timer update
   useEffect(() => {
+    if (isBlacklisted || nfts.length === 0) {
+      setLiveTimer({
+        weeks: 0,
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0
+      });
+      return;
+    }
+
+    // Determine start date
+    let startDate = null;
+
+    if (resetInfo && resetInfo.resetDate && resetInfo.resetDate.trim() !== '') {
+      startDate = new Date(resetInfo.resetDate).getTime();
+    } else {
+      const oldestNFT = nfts.reduce((oldest, nft) => 
+        (nft.daysInWallet || 0) > (oldest.daysInWallet || 0) ? nft : oldest
+      );
+      if (oldestNFT?.transferDate) {
+        startDate = new Date(oldestNFT.transferDate).getTime();
+      }
+    }
+
+    if (!startDate) {
+      setLiveTimer({
+        weeks: 0,
+        days: 0,
+        hours: 0,
+        minutes: 0,
+        seconds: 0
+      });
+      return;
+    }
+
     const updateTimer = () => {
-      // If blacklisted, show all zeros
-      if (isBlacklisted) {
-        setLiveTimer({
-          weeks: 0,
-          days: 0,
-          hours: 0,
-          minutes: 0,
-          seconds: 0
-        });
-        return;
-      }
-
-      // Determine start date: reset date OR oldest NFT transfer date
-      let startDate;
-      if (resetInfo && resetInfo.resetDate && resetInfo.resetDate.trim() !== '') {
-        startDate = new Date(resetInfo.resetDate).getTime();
-      } else if (nfts.length > 0) {
-        const oldestNFT = nfts.reduce((oldest, nft) => 
-          (nft.daysInWallet || 0) > (oldest.daysInWallet || 0) ? nft : oldest
-        );
-        if (oldestNFT?.transferDate) {
-          startDate = new Date(oldestNFT.transferDate).getTime();
-        }
-      }
-
-      if (!startDate) {
-        setLiveTimer({
-          weeks: 0,
-          days: 0,
-          hours: 0,
-          minutes: 0,
-          seconds: 0
-        });
-        return;
-      }
-
       const now = Date.now();
       const diffMs = now - startDate;
 
@@ -246,8 +246,8 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
       });
     };
 
-    updateTimer(); // Initial run
-    const interval = setInterval(updateTimer, 1000); // Update every second
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
   }, [isBlacklisted, nfts, resetInfo]);
@@ -294,10 +294,6 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
     return () => clearInterval(interval);
   }, []);
 
-  console.log(`Wallet: ${walletAddress}`);
-  console.log(`Blacklisted: ${isBlacklisted ? '❌ YES' : '✅ NO'}`);
-  console.log(`Oldest NFT: ${oldestNFTDays} days (since ${oldestDate})`);
-  console.log(`Uptime Bonus: ${uptimeBonus}%, Hexa-Link: ${hexaLinkBonus}%, Total: ${totalBoostPercentage}%`);
 
   return (
     <div style={styles.container}>
