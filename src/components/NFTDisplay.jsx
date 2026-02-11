@@ -3,11 +3,24 @@ import blacklistedWallets from "../data/blacklisted-wallets.json";
 import resetDates from "../data/reset-dates.json";
 import { MdAccessTime, MdShowChart, MdWarning, MdInfo } from "react-icons/md";
 import { HiLink } from "react-icons/hi";
-import { FaClock } from "react-icons/fa";
-import { TbHexagon, TbAtom, TbSun, TbAntenna, TbBolt, TbStarFilled } from 'react-icons/tb';
-import { IoCheckmarkCircle } from 'react-icons/io5';
+import { FaClock, FaCoins, FaChartLine } from "react-icons/fa";
+import { TbHexagon, TbAtom, TbSun, TbAntenna, TbBolt, TbStarFilled, TbTrendingUp } from 'react-icons/tb';
+import { IoCheckmarkCircle, IoWalletSharp } from 'react-icons/io5';
+import { RiMoneyDollarCircleFill } from 'react-icons/ri';
 
 const NFTDisplay = ({ nfts, walletAddress }) => {
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1200);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Live timer state
   const [liveTimer, setLiveTimer] = useState({
     weeks: 0,
@@ -55,25 +68,50 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
   const isBlacklisted = blacklistedWallets.blacklistedWallets
     .some(addr => addr.toLowerCase() === walletAddress.toLowerCase());
 
-  // Find OLDEST NFT transfer date (highest daysInWallet)
-  const oldestNFTDays = nfts.length > 0 
-    ? Math.max(...nfts.map(nft => nft.daysInWallet || 0))
-    : 0;
+  // Check if user has a reset date
+  const resetInfo = resetDates.resetWallets.find(
+    w => w.address && w.address.toLowerCase() === walletAddress.toLowerCase()
+  );
 
-  // Get oldest NFT's transfer date
-  const oldestNFT = nfts.length > 0
-    ? nfts.reduce((oldest, nft) => 
-        (nft.daysInWallet || 0) > (oldest.daysInWallet || 0) ? nft : oldest
-      )
-    : null;
+  // Calculate days based on reset date OR oldest NFT
+  let calculatedOldestDays = 0;
+  let calculatedOldestDate = 'N/A';
+  let usingResetDate = false;
 
-  const oldestDate = oldestNFT?.transferDate 
-    ? new Date(oldestNFT.transferDate).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-      })
-    : 'N/A';
+  if (resetInfo && resetInfo.resetDate && resetInfo.resetDate.trim() !== '') {
+    // Use reset date as starting point
+    const resetDate = new Date(resetInfo.resetDate);
+    calculatedOldestDays = Math.floor((Date.now() - resetDate.getTime()) / (1000 * 60 * 60 * 24));
+    calculatedOldestDays = Math.max(0, calculatedOldestDays);
+    calculatedOldestDate = resetDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    usingResetDate = true;
+  } else {
+    // Use oldest NFT transfer date (original logic)
+    calculatedOldestDays = nfts.length > 0 
+      ? Math.max(...nfts.map(nft => nft.daysInWallet || 0))
+      : 0;
+    
+    const oldestNFT = nfts.length > 0
+      ? nfts.reduce((oldest, nft) => 
+          (nft.daysInWallet || 0) > (oldest.daysInWallet || 0) ? nft : oldest
+        )
+      : null;
+
+    calculatedOldestDate = oldestNFT?.transferDate 
+      ? new Date(oldestNFT.transferDate).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        })
+      : 'N/A';
+  }
+
+  const oldestNFTDays = calculatedOldestDays;
+  const oldestDate = calculatedOldestDate;
 
   const totalNodePower = nfts.reduce(
     (acc, nft) =>
@@ -135,6 +173,9 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
   const totalBoostPercentage = uptimeBonus + hexaLinkBonus;
   const totalBoostMultiplier = 1 + (totalBoostPercentage / 100);
 
+  // Generate styles with mobile responsiveness
+  const styles = getStyles(isMobile);
+
   // Base income (boost'suz, tüm NFT'ler)
   const baseIncome = nfts.reduce((acc, nft) => {
     const nodeType = parseInt(
@@ -150,12 +191,45 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
 
   // Live timer update
   useEffect(() => {
-    if (!oldestNFT?.transferDate) return;
-
     const updateTimer = () => {
+      // If blacklisted, show all zeros
+      if (isBlacklisted) {
+        setLiveTimer({
+          weeks: 0,
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0
+        });
+        return;
+      }
+
+      // Determine start date: reset date OR oldest NFT transfer date
+      let startDate;
+      if (resetInfo && resetInfo.resetDate && resetInfo.resetDate.trim() !== '') {
+        startDate = new Date(resetInfo.resetDate).getTime();
+      } else if (nfts.length > 0) {
+        const oldestNFT = nfts.reduce((oldest, nft) => 
+          (nft.daysInWallet || 0) > (oldest.daysInWallet || 0) ? nft : oldest
+        );
+        if (oldestNFT?.transferDate) {
+          startDate = new Date(oldestNFT.transferDate).getTime();
+        }
+      }
+
+      if (!startDate) {
+        setLiveTimer({
+          weeks: 0,
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0
+        });
+        return;
+      }
+
       const now = Date.now();
-      const transferTime = new Date(oldestNFT.transferDate).getTime();
-      const diffMs = now - transferTime;
+      const diffMs = now - startDate;
 
       const seconds = Math.floor(diffMs / 1000);
       const minutes = Math.floor(seconds / 60);
@@ -176,15 +250,15 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
     const interval = setInterval(updateTimer, 1000); // Update every second
 
     return () => clearInterval(interval);
-  }, [oldestNFT?.transferDate]);
+  }, [isBlacklisted, nfts, resetInfo]);
 
   // Payment countdown update
   useEffect(() => {
     const updatePaymentCountdown = () => {
       const now = Date.now();
       
-      // First payment: Feb 17, 2026 15:00 UTC
-      const firstPayment = new Date('2026-02-17T15:00:00.000Z').getTime();
+      // First payment: Feb 18, 2026 15:00 UTC (Wednesday)
+      const firstPayment = new Date('2026-02-18T15:00:00.000Z').getTime();
       
       // Calculate which payment cycle we're in
       const weekInMs = 7 * 24 * 60 * 60 * 1000;
@@ -251,7 +325,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
               >
                 <div style={styles.nodeIcon}>
                   {React.createElement(nodeTypeIcons[nodeType], { 
-                    style: { fontSize: '48px', color: '#00E5FF' }
+                    style: { fontSize: isMobile ? '28px' : '48px', color: '#00E5FF' }
                   })}
                 </div>
                 <div style={styles.nodeTypeName}>
@@ -270,24 +344,52 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
 
         {/* Summary Panel */}
         <div style={styles.summaryPanel}>
-          <div style={styles.summaryBox}>
-            <div style={styles.summaryLabel}>TOTAL MONTHLY USDC YIELD</div>
-            <div style={styles.summaryValue}>{totalFinalIncome.toFixed(2)} USDC</div>
-            {isBlacklisted ? (
-              <div style={{...styles.summarySubtext, color: '#FF4444', fontSize: '16px', fontWeight: 'bold'}}>
-                ⚠️ LISTING DETECTED - BOOSTS DISABLED
-                <br/>
-                <span style={{fontSize: '14px', color: '#FF8888'}}>
-                  Wallet is blacklisted • Remove all listings to restore +{getUptimeBonus(oldestNFTDays) + (completeSets * 10)}% boost
-                </span>
-              </div>
-            ) : (
-              totalBoostPercentage > 0 && (
-                <div style={styles.summarySubtext}>
-                  Base: {baseIncome.toFixed(2)} USDC + {totalBoostPercentage}% Boost = {totalFinalIncome.toFixed(2)} USDC
+          {/* Modern Yield Summary Box */}
+          <div style={styles.modernYieldBox}>
+            <div style={styles.yieldContent}>
+              <div style={styles.yieldTopSection}>
+                <div style={styles.yieldLabelSection}>
+                  <RiMoneyDollarCircleFill style={styles.yieldLabelIcon} />
+                  <span style={styles.yieldLabel}>MONTHLY YIELD</span>
                 </div>
-              )
-            )}
+                {!isBlacklisted && totalBoostPercentage > 0 && (
+                  <div style={styles.boostBadge}>
+                    <TbTrendingUp style={{fontSize: isMobile ? '14px' : '16px', marginRight: '4px'}} />
+                    +{totalBoostPercentage}%
+                  </div>
+                )}
+              </div>
+              
+              <div style={styles.yieldMainValue}>
+                {totalFinalIncome.toFixed(2)}<span style={styles.yieldCurrency}>USDC</span>
+              </div>
+              
+              {isBlacklisted ? (
+                <div style={styles.yieldWarning}>
+                  <MdWarning style={{fontSize: isMobile ? '16px' : '18px', marginRight: '6px'}} />
+                  <div style={styles.yieldWarningText}>
+                    <strong>LISTING DETECTED - BOOSTS DISABLED</strong>
+                    <div style={{fontSize: isMobile ? '11px' : '12px', marginTop: '4px', opacity: 0.9}}>
+                      Remove all listings to restore +{getUptimeBonus(oldestNFTDays) + (completeSets * 10)}% boost
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                totalBoostPercentage > 0 && (
+                  <div style={styles.yieldBreakdown}>
+                    <div style={styles.yieldBreakdownItem}>
+                      <span style={styles.yieldBreakdownLabel}>Base Income:</span>
+                      <span style={styles.yieldBreakdownValue}>{baseIncome.toFixed(2)} USDC</span>
+                    </div>
+                    <div style={styles.yieldBreakdownSeparator}>+</div>
+                    <div style={styles.yieldBreakdownItem}>
+                      <span style={styles.yieldBreakdownLabel}>Boost ({totalBoostPercentage}%):</span>
+                      <span style={styles.yieldBreakdownValue}>+{(totalFinalIncome - baseIncome).toFixed(2)} USDC</span>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
           </div>
 
           {/* Boost Protocol Panel */}
@@ -295,16 +397,6 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
             <div style={styles.boostProtocolTitle}>
               <MdShowChart style={{fontSize: '24px', verticalAlign: 'middle', marginRight: '8px'}} />
               LOYALTY & EFFICIENCY PROTOCOLS
-              {nfts.length > 0 && (
-                isBlacklisted ? (
-                  <span style={{color: '#FF4444', marginLeft: '15px'}}>❌ DISABLED</span>
-                ) : (
-                  <span style={{color: '#00FF88', marginLeft: '15px'}}>
-                    <IoCheckmarkCircle style={{fontSize: '20px', verticalAlign: 'middle', marginRight: '5px'}} />
-                    ACTIVE
-                  </span>
-                )
-              )}
             </div>
 
             {/* Canlı Saat */}
@@ -428,7 +520,6 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
 
               {/* Signal Stability Info Note */}
               <div style={styles.infoNote}>
-                <MdInfo style={{fontSize: '18px', color: '#4DD0E1', marginRight: '8px', flexShrink: 0}} />
                 <div style={styles.infoNoteText}>
                   Our system scans all Nodes 6 times daily at random intervals. If any marketplace listing is detected during a scan, all boosts will be immediately disabled.
                 </div>
@@ -478,7 +569,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                           boxShadow: hasType && !isBlacklisted ? '0 0 12px rgba(0, 255, 136, 0.4)' : 'none',
                         }}
                       >
-                        <NodeIcon style={{fontSize: '32px', color: hasType && !isBlacklisted ? '#00E5FF' : '#666'}} />
+                        <NodeIcon style={{fontSize: isMobile ? '24px' : '32px', color: hasType && !isBlacklisted ? '#00E5FF' : '#666'}} />
                         <div style={styles.hexaIconName}>{nodeTypeNames[type]}</div>
                         <div style={{
                           ...styles.hexaIconCount,
@@ -602,7 +693,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
   );
 };
 
-const styles = {
+const getStyles = (isMobile) => ({
   container: {
     textAlign: "center",
     color: "white",
@@ -610,23 +701,23 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    padding: "40px 10px",
+    padding: isMobile ? "20px 5px" : "40px 10px",
     minHeight: "100vh",
   },
   titleSection: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '10px',
-    marginBottom: '50px',
+    gap: isMobile ? '6px' : '10px',
+    marginBottom: isMobile ? '25px' : '50px',
   },
   brandTitle: {
-    fontSize: '20px',
+    fontSize: isMobile ? '14px' : '20px',
     fontWeight: '600',
     color: '#00D9FF',
     textShadow: '0 0 10px rgba(0, 217, 255, 0.5)',
     fontFamily: 'Rajdhani',
-    letterSpacing: '4px',
+    letterSpacing: isMobile ? '3px' : '4px',
     textTransform: 'uppercase',
   },
   mainTitle: {
@@ -637,62 +728,62 @@ const styles = {
     maxWidth: "none",
     display: "flex",
     flexDirection: "column",
-    gap: "40px",
-    padding: "0 40px",
+    gap: isMobile ? "20px" : "40px",
+    padding: isMobile ? "0 10px" : "0 40px",
   },
   nodeGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, 1fr)",
-    gap: "25px",
+    gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(6, 1fr)",
+    gap: isMobile ? "12px" : "25px",
     width: "100%",
   },
   nodeBox: {
-    padding: "40px 10px",
-    borderRadius: "15px",
+    padding: isMobile ? "15px 8px" : "40px 10px",
+    borderRadius: isMobile ? "12px" : "15px",
     background: "linear-gradient(180deg, rgba(0, 30, 80, 0.5), rgba(0, 20, 60, 0.7))",
     boxShadow: "0 0 10px rgba(0, 136, 221, 0.3), inset 0 0 8px rgba(0, 136, 221, 0.05)",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: "12px",
+    gap: isMobile ? "6px" : "12px",
     transition: "all 0.3s ease",
   },
   nodeIcon: {
-    marginBottom: "10px",
+    marginBottom: isMobile ? "3px" : "10px",
   },
   nodeTypeName: {
-    fontSize: "18px",
+    fontSize: isMobile ? "11px" : "18px",
     fontWeight: "bold",
     color: "#00E5FF",
     textShadow: "0 0 8px rgba(0, 217, 255, 0.5)",
     fontFamily: "Font1, sans-serif",
-    marginBottom: "15px",
+    marginBottom: isMobile ? "5px" : "15px",
     textAlign: "center",
   },
   nodeCount: {
-    fontSize: "48px",
+    fontSize: isMobile ? "24px" : "48px",
     fontWeight: "bold",
     color: "white",
     textShadow: "0 0 12px rgba(0, 217, 255, 0.6)",
     fontFamily: "Font1, sans-serif",
   },
   nodeCountLabel: {
-    fontSize: "12px",
+    fontSize: isMobile ? "9px" : "12px",
     color: "#00D9FF",
     textTransform: "uppercase",
     letterSpacing: "1px",
     fontFamily: "Font1, sans-serif",
-    marginBottom: "10px",
+    marginBottom: isMobile ? "4px" : "10px",
   },
   nodeIncome: {
-    fontSize: "20px",
+    fontSize: isMobile ? "13px" : "20px",
     fontWeight: "bold",
     color: "#4DD0E1",
     textShadow: "0 0 6px rgba(77, 208, 225, 0.4)",
     fontFamily: "Font1, sans-serif",
   },
   nodeIncomeLabel: {
-    fontSize: "10px",
+    fontSize: isMobile ? "8px" : "10px",
     color: "#0088DD",
     textTransform: "uppercase",
     fontFamily: "Font1, sans-serif",
@@ -701,122 +792,249 @@ const styles = {
     width: "100%",
     display: "flex",
     flexDirection: "column",
-    gap: "20px",
+    gap: isMobile ? "25px" : "40px",
+  },
+  modernYieldBox: {
+    display: "flex",
+    alignItems: "stretch",
+    padding: isMobile ? "20px" : "30px",
+    border: "2px solid rgb(0, 229, 255)",
+    borderRadius: isMobile ? "15px" : "20px",
+    background: "linear-gradient(135deg, rgba(0, 20, 60, 0.5), rgba(0, 10, 40, 0.7))",
+    boxShadow: "0 0 15px rgba(0, 229, 255, 0.25)",
+    position: "relative",
+    overflow: "hidden",
+  },
+  yieldContent: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    gap: isMobile ? "8px" : "12px",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  yieldTopSection: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: isMobile ? "8px" : "10px",
+    width: "100%",
+  },
+  yieldLabelSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: isMobile ? "6px" : "8px",
+    marginBottom:"10px"
+  },
+  yieldLabelIcon: {
+    fontSize: isMobile ? "24px" : "32px",
+    color: "rgb(0, 255, 136)",
+  },
+  yieldLabel: {
+    fontSize: isMobile ? "20px" : "25px",
+    color: "rgb(0, 255, 136)",
+    textTransform: "uppercase",
+    letterSpacing: isMobile ? "1.5px" : "2px",
+    fontFamily: "Font1, sans-serif",
+    fontWeight: "700",
+  },
+  boostBadge: {
+    display: "flex",
+    alignItems: "center",
+    padding: isMobile ? "4px 10px" : "6px 14px",
+    background: "linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(0, 217, 255, 0.1))",
+    border: "2px solid rgba(0, 229, 255, 0.5)",
+    borderRadius: isMobile ? "12px" : "15px",
+    color: "#00E5FF",
+    fontSize: isMobile ? "12px" : "14px",
+    fontWeight: "bold",
+    fontFamily: "Rajdhani",
+    boxShadow: "0 0 8px rgba(0, 229, 255, 0.25)",
+  },
+  yieldMainValue: {
+    fontSize: isMobile ? "36px" : "56px",
+    fontWeight: "bold",
+    color: "#00FF88",
+    textShadow: "0 0 15px rgba(0, 255, 136, 0.6), 0 0 30px rgba(0, 255, 136, 0.3)",
+    fontFamily: "Font1, sans-serif",
+    lineHeight: "1",
+  },
+  yieldCurrency: {
+    fontSize: isMobile ? "24px" : "36px",
+    fontWeight: "600",
+    color: "#00FF88",
+    marginLeft: isMobile ? "6px" : "10px",
+  },
+  yieldWarning: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: isMobile ? "8px" : "10px",
+    padding: isMobile ? "12px" : "15px",
+    background: "linear-gradient(135deg, rgba(255, 68, 68, 0.15), rgba(255, 136, 136, 0.1))",
+    border: "2px solid rgba(255, 68, 68, 0.5)",
+    borderRadius: isMobile ? "8px" : "10px",
+    color: "#FF6666",
+    marginTop: isMobile ? "4px" : "6px",
+  },
+  yieldWarningText: {
+    flex: 1,
+    fontSize: isMobile ? "12px" : "14px",
+    fontFamily: "Rajdhani",
+    fontWeight: "600",
+    lineHeight: "1.4",
+  },
+  yieldBreakdown: {
+    display: "flex",
+    alignItems: "center",
+    gap: isMobile ? "10px" : "15px",
+    padding: isMobile ? "10px 12px" : "12px 16px",
+    background: "rgba(0, 136, 221, 0.1)",
+    borderRadius: isMobile ? "8px" : "10px",
+    border: "1px solid rgba(0, 217, 255, 0.3)",
+    marginTop: isMobile ? "4px" : "6px",
+    flexWrap: isMobile ? "wrap" : "nowrap",
+  },
+  yieldBreakdownItem: {
+    display: "flex",
+    flexDirection: isMobile ? "column" : "row",
+    alignItems: isMobile ? "flex-start" : "center",
+    gap: isMobile ? "2px" : "8px",
+  },
+  yieldBreakdownLabel: {
+    fontSize: isMobile ? "11px" : "13px",
+    color: "#4DD0E1",
+    fontFamily: "Rajdhani",
+    fontWeight: "500",
+  },
+  yieldBreakdownValue: {
+    fontSize: isMobile ? "13px" : "15px",
+    color: "#00FF88",
+    fontFamily: "Rajdhani",
+    fontWeight: "700",
+  },
+  yieldBreakdownSeparator: {
+    fontSize: isMobile ? "16px" : "20px",
+    color: "#00D9FF",
+    fontWeight: "bold",
+    fontFamily: "Font1, sans-serif",
   },
   summaryBox: {
-    padding: "40px",
-    border: "3px solid #00FF88",
-    borderRadius: "20px",
+    padding: isMobile ? "25px 20px" : "40px",
+    border: isMobile ? "2px solid #00FF88" : "3px solid #00FF88",
+    borderRadius: isMobile ? "15px" : "20px",
     background: "linear-gradient(135deg, rgba(0, 40, 20, 0.6), rgba(0, 20, 10, 0.8))",
     boxShadow: "0 0 20px rgba(0, 255, 136, 0.3), inset 0 0 15px rgba(0, 255, 136, 0.05)",
   },
   summaryLabel: {
-    fontSize: "16px",
+    fontSize: isMobile ? "13px" : "16px",
     color: "#00FF88",
     textTransform: "uppercase",
-    letterSpacing: "3px",
+    letterSpacing: isMobile ? "2px" : "3px",
     fontFamily: "Font1, sans-serif",
-    marginBottom: "15px",
+    marginBottom: isMobile ? "10px" : "15px",
   },
   summaryValue: {
-    fontSize: "56px",
+    fontSize: isMobile ? "36px" : "56px",
     fontWeight: "bold",
     color: "#00FF88",
     textShadow: "0 0 15px rgba(0, 255, 136, 0.6)",
     fontFamily: "Font1, sans-serif",
   },
   summarySubtext: {
-    fontSize: "14px",
+    fontSize: isMobile ? "12px" : "14px",
     color: "#00FF88",
-    marginTop: "10px",
+    marginTop: isMobile ? "8px" : "10px",
     fontFamily: "Rajdhani",
   },
   boostProtocolPanel: {
-    padding: "30px",
-    border: "2px solid #00D9FF",
-    borderRadius: "15px",
-    background: "linear-gradient(180deg, rgba(0, 30, 80, 0.5), rgba(0, 20, 60, 0.7))",
-    boxShadow: "0 0 10px rgba(0, 136, 221, 0.3), inset 0 0 8px rgba(0, 136, 221, 0.05)",
+    padding: isMobile ? "20px 15px" : "30px",
+    border: "2px solid #00E5FF",
+    borderRadius: isMobile ? "12px" : "15px",
+    background: "linear-gradient(135deg, rgba(0, 20, 60, 0.5), rgba(0, 10, 40, 0.7))",
+    boxShadow: "0 0 15px rgba(0, 229, 255, 0.25)",
   },
   boostProtocolTitle: {
-    fontSize: "18px",
+    fontSize: isMobile ? "15px" : "18px",
     fontWeight: "bold",
-    color: "#00FF88",
-    textShadow: "0 0 10px rgba(0, 255, 136, 0.5)",
+    color: "rgb(0, 229, 255)",
     fontFamily: "Font1, sans-serif",
-    marginBottom: "25px",
+    marginBottom: isMobile ? "15px" : "25px",
     textAlign: "center",
-    letterSpacing: "2px",
+    letterSpacing: isMobile ? "1.5px" : "2px",
   },
   warningBox: {
     display: "flex",
+    flexDirection: isMobile ? "column" : "row",
     alignItems: "center",
-    gap: "15px",
-    padding: "20px",
+    gap: isMobile ? "10px" : "15px",
+    padding: isMobile ? "15px" : "20px",
     background: "linear-gradient(135deg, rgba(80, 20, 20, 0.6), rgba(60, 10, 10, 0.8))",
     border: "2px solid #FF4444",
-    borderRadius: "12px",
-    marginTop: "20px",
-    marginBottom: "25px",
+    borderRadius: isMobile ? "10px" : "12px",
+    marginTop: isMobile ? "15px" : "20px",
+    marginBottom: isMobile ? "20px" : "25px",
     boxShadow: "0 0 15px rgba(255, 68, 68, 0.3)",
   },
   warningIcon: {
-    fontSize: "32px",
+    fontSize: isMobile ? "32px" : "32px",
     lineHeight: "1",
     flexShrink: 0,
-    alignSelf: "center",
+    alignSelf: isMobile ? "center" : "center",
   },
   warningContent: {
     flex: 1,
+    width: isMobile ? "100%" : "auto",
   },
   warningTitle: {
-    fontSize: "14px",
+    fontSize: isMobile ? "12px" : "14px",
     fontWeight: "bold",
     color: "#FF6666",
     textTransform: "uppercase",
-    letterSpacing: "2px",
+    letterSpacing: isMobile ? "1.5px" : "2px",
     fontFamily: "Font1, sans-serif",
-    marginBottom: "8px",
+    marginBottom: isMobile ? "6px" : "8px",
     textShadow: "0 0 8px rgba(255, 102, 102, 0.5)",
   },
   warningText: {
-    fontSize: "16px",
+    fontSize: isMobile ? "13px" : "16px",
     color: "#FFB3B3",
     lineHeight: "1.6",
     fontFamily: "Rajdhani",
     fontWeight: "600",
   },
   liveTimerContainer: {
-    marginBottom: "30px",
-    padding: "25px",
+    marginBottom: isMobile ? "20px" : "30px",
+    padding: isMobile ? "18px 12px" : "25px",
     background: "linear-gradient(135deg, rgba(0, 20, 60, 0.5), rgba(0, 10, 40, 0.7))",
-    borderRadius: "15px",
+    borderRadius: isMobile ? "12px" : "15px",
     border: "2px solid #00E5FF",
     boxShadow: "0 0 15px rgba(0, 229, 255, 0.25)",
   },
   liveTimerTitle: {
-    fontSize: "14px",
+    fontSize: isMobile ? "11px" : "14px",
     color: "#00E5FF",
     textShadow: "0 0 8px rgba(0, 229, 255, 0.4)",
     fontFamily: "Font1, sans-serif",
-    letterSpacing: "2px",
-    marginBottom: "15px",
+    letterSpacing: isMobile ? "1.5px" : "2px",
+    marginBottom: isMobile ? "10px" : "15px",
     textAlign: "center",
   },
   liveTimer: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    gap: "15px",
+    gap: isMobile ? "5px" : "15px",
+    flexWrap: "nowrap",
   },
   timerBlock: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    minWidth: "80px",
+    minWidth: isMobile ? "42px" : "80px",
   },
   timerValue: {
-    fontSize: "48px",
+    fontSize: isMobile ? "22px" : "48px",
     fontWeight: "bold",
     color: "#00FF88",
     textShadow: "0 0 12px rgba(0, 255, 136, 0.5)",
@@ -824,20 +1042,20 @@ const styles = {
     lineHeight: "1",
   },
   timerLabel: {
-    fontSize: "10px",
+    fontSize: isMobile ? "7px" : "10px",
     color: "#00D9FF",
     textTransform: "uppercase",
-    letterSpacing: "1px",
+    letterSpacing: isMobile ? "0.5px" : "1px",
     fontFamily: "Rajdhani",
-    marginTop: "8px",
+    marginTop: isMobile ? "3px" : "8px",
   },
   timerSeparator: {
-    fontSize: "42px",
+    fontSize: isMobile ? "18px" : "42px",
     fontWeight: "bold",
     color: "#0088DD",
     textShadow: "0 0 6px rgba(0, 136, 221, 0.4)",
     fontFamily: "Font1, sans-serif",
-    marginBottom: "20px",
+    marginBottom: isMobile ? "8px" : "20px",
   },
   boostGridSingleColumn: {
     display: "flex",
@@ -845,83 +1063,85 @@ const styles = {
     gap: "0",
   },
   boostCard: {
-    padding: "25px",
+    padding: isMobile ? "18px" : "25px",
     border: "2px solid #0088DD",
-    borderRadius: "12px",
+    borderRadius: isMobile ? "10px" : "12px",
     background: "rgba(0, 0, 0, 0.6)",
     boxShadow: "0 0 15px rgba(0, 136, 221, 0.3)",
   },
   boostCardFullWidth: {
-    padding: "35px",
-    border: "3px solid #0088DD",
-    borderRadius: "15px",
-    background: "linear-gradient(135deg, rgba(0, 20, 60, 0.6), rgba(0, 10, 40, 0.8))",
-    boxShadow: "0 0 15px rgba(0, 136, 221, 0.3), inset 0 0 10px rgba(0, 136, 221, 0.05)",
+    padding: isMobile ? "22px 18px" : "35px",
+    border: "2px solid #00E5FF",
+    borderRadius: isMobile ? "12px" : "15px",
+    background: "linear-gradient(135deg, rgba(0, 20, 60, 0.5), rgba(0, 10, 40, 0.7))",
+    boxShadow: "0 0 15px rgba(0, 229, 255, 0.25)",
   },
   boostCardHeaderLarge: {
     display: "flex",
-    justifyContent: "space-between",
+    flexDirection: isMobile ? "column" : "row",
+    justifyContent: isMobile ? "center" : "space-between",
     alignItems: "center",
-    marginBottom: "25px",
+    marginBottom: isMobile ? "18px" : "25px",
+    gap: isMobile ? "12px" : "0",
   },
   boostHeaderLeft: {
     display: "flex",
     alignItems: "center",
-    gap: "15px",
+    gap: isMobile ? "10px" : "15px",
   },
   boostCardHeader: {
     display: "flex",
     alignItems: "center",
-    gap: "10px",
-    marginBottom: "15px",
+    gap: isMobile ? "8px" : "10px",
+    marginBottom: isMobile ? "12px" : "15px",
   },
   boostIcon: {
-    fontSize: "24px",
+    fontSize: isMobile ? "20px" : "24px",
   },
   boostIconLarge: {
-    fontSize: "36px",
+    fontSize: isMobile ? "28px" : "36px",
   },
   boostName: {
-    fontSize: "14px",
+    fontSize: isMobile ? "12px" : "14px",
     fontWeight: "bold",
     color: "#00E5FF",
     fontFamily: "Font1, sans-serif",
-    letterSpacing: "1px",
+    letterSpacing: isMobile ? "0.8px" : "1px",
   },
   boostNameLarge: {
-    fontSize: "18px",
+    fontSize: isMobile ? "15px" : "18px",
     fontWeight: "bold",
     color: "#00E5FF",
     fontFamily: "Font1, sans-serif",
-    letterSpacing: "2px",
+    letterSpacing: isMobile ? "1.5px" : "2px",
     textTransform: "uppercase",
   },
   boostValue: {
-    fontSize: "42px",
+    fontSize: isMobile ? "32px" : "42px",
     fontWeight: "bold",
     color: "#00FF88",
     textShadow: "0 0 20px #00FF88",
     fontFamily: "Font1, sans-serif",
-    marginBottom: "10px",
+    marginBottom: isMobile ? "8px" : "10px",
   },
   boostValueLarge: {
-    fontSize: "64px",
+    fontSize: isMobile ? "42px" : "64px",
     fontWeight: "bold",
     color: "#00FF88",
     textShadow: "0 0 30px #00FF88, 0 0 50px #00FF88",
     fontFamily: "Font1, sans-serif",
   },
   boostDescription: {
-    fontSize: "12px",
+    fontSize: isMobile ? "11px" : "12px",
     color: "#4DD0E1",
     fontFamily: "Rajdhani",
-    marginBottom: "15px",
+    marginBottom: isMobile ? "12px" : "15px",
   },
   boostDescriptionLarge: {
-    fontSize: "15px",
+    fontSize: isMobile ? "13px" : "15px",
     color: "#4DD0E1",
     fontFamily: "Rajdhani",
-    marginBottom: "25px",
+    marginBottom: isMobile ? "18px" : "25px",
   },
   progressContainer: {
     width: "100%",
@@ -930,21 +1150,21 @@ const styles = {
   milestoneLabelsTop: {
     position: "relative",
     width: "100%",
-    height: "25px",
-    marginBottom: "10px",
+    height: isMobile ? "20px" : "25px",
+    marginBottom: isMobile ? "8px" : "10px",
   },
   milestoneLabelsBottom: {
     position: "relative",
     width: "100%",
-    height: "25px",
-    marginTop: "10px",
+    height: isMobile ? "20px" : "25px",
+    marginTop: isMobile ? "8px" : "10px",
   },
   progressBarLarge: {
     position: "relative",
     width: "100%",
-    height: "25px",
+    height: isMobile ? "20px" : "25px",
     background: "rgba(0, 20, 60, 0.6)",
-    borderRadius: "12px",
+    borderRadius: isMobile ? "10px" : "12px",
     overflow: "visible",
     border: "2px solid #0088DD",
   },
@@ -962,13 +1182,13 @@ const styles = {
     animation: "shimmer 3s infinite",
     boxShadow: "0 0 15px rgba(0, 255, 136, 0.5), inset 0 0 8px rgba(255, 255, 255, 0.2)",
     transition: "width 0.5s ease",
-    borderRadius: "10px",
+    borderRadius: isMobile ? "8px" : "10px",
   },
   progressGlow: {
     position: "absolute",
     top: 0,
     right: 0,
-    width: "50px",
+    width: isMobile ? "30px" : "50px",
     height: "100%",
     background: "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6))",
     animation: "glowMove 2s infinite",
@@ -976,7 +1196,7 @@ const styles = {
   milestoneMarker: {
     position: "absolute",
     top: "-5px",
-    width: "3px",
+    width: isMobile ? "2px" : "3px",
     height: "calc(100% + 10px)",
     background: "#00E5FF",
     boxShadow: "0 0 5px rgba(0, 229, 255, 0.5)",
@@ -985,23 +1205,23 @@ const styles = {
   milestonesLarge: {
     display: "flex",
     justifyContent: "space-between",
-    padding: "0 10px",
+    padding: isMobile ? "0 5px" : "0 10px",
   },
   milestoneItem: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: "5px",
+    gap: isMobile ? "3px" : "5px",
     transition: "all 0.3s ease",
   },
   milestoneDay: {
-    fontSize: "13px",
+    fontSize: isMobile ? "10px" : "13px",
     fontFamily: "Rajdhani",
     fontWeight: "700",
-    letterSpacing: "1px",
+    letterSpacing: isMobile ? "0.5px" : "1px",
   },
   milestoneBonus: {
-    fontSize: "18px",
+    fontSize: isMobile ? "14px" : "18px",
     fontFamily: "Font1, sans-serif",
     fontWeight: "bold",
   },
@@ -1010,11 +1230,11 @@ const styles = {
   },
   boostProgressBar: {
     width: "100%",
-    height: "8px",
+    height: isMobile ? "6px" : "8px",
     background: "rgba(0, 136, 221, 0.2)",
     borderRadius: "4px",
     overflow: "hidden",
-    marginBottom: "8px",
+    marginBottom: isMobile ? "6px" : "8px",
   },
   boostProgressFill: {
     height: "100%",
@@ -1025,118 +1245,118 @@ const styles = {
   boostMilestones: {
     display: "flex",
     justifyContent: "space-between",
-    fontSize: "10px",
+    fontSize: isMobile ? "9px" : "10px",
     fontFamily: "Rajdhani",
     fontWeight: "600",
   },
   hexaLinkGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, 1fr)",
-    gap: "8px",
-    marginBottom: "12px",
+    gridTemplateColumns: isMobile ? "repeat(3, 1fr)" : "repeat(6, 1fr)",
+    gap: isMobile ? "6px" : "8px",
+    marginBottom: isMobile ? "10px" : "12px",
   },
   hexaLinkGridLarge: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, 1fr)",
-    gap: "20px",
-    marginBottom: "20px",
+    gridTemplateColumns: isMobile ? "repeat(3, 1fr)" : "repeat(6, 1fr)",
+    gap: isMobile ? "12px" : "20px",
+    marginBottom: isMobile ? "15px" : "20px",
   },
   hexaLinkIcon: {
-    padding: "8px 4px",
+    padding: isMobile ? "6px 3px" : "8px 4px",
     borderRadius: "6px",
     background: "rgba(0, 136, 221, 0.1)",
-    fontSize: "14px",
+    fontSize: isMobile ? "12px" : "14px",
     textAlign: "center",
     transition: "all 0.3s ease",
   },
   hexaLinkIconLarge: {
-    padding: "20px 10px",
-    borderRadius: "12px",
+    padding: isMobile ? "14px 8px" : "20px 10px",
+    borderRadius: isMobile ? "10px" : "12px",
     background: "linear-gradient(135deg, rgba(0, 30, 80, 0.4), rgba(0, 20, 60, 0.6))",
-    fontSize: "18px",
+    fontSize: isMobile ? "14px" : "18px",
     textAlign: "center",
     transition: "all 0.3s ease",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: "8px",
-    minHeight: "120px",
+    gap: isMobile ? "5px" : "8px",
+    minHeight: isMobile ? "90px" : "120px",
     justifyContent: "center",
   },
   hexaIconEmoji: {
-    fontSize: "32px",
-    marginBottom: "5px",
+    fontSize: isMobile ? "24px" : "32px",
+    marginBottom: isMobile ? "3px" : "5px",
   },
   hexaIconName: {
-    fontSize: "11px",
+    fontSize: isMobile ? "9px" : "11px",
     color: "#00D9FF",
     fontFamily: "Rajdhani",
     fontWeight: "600",
     letterSpacing: "0.5px",
   },
   hexaIconCount: {
-    fontSize: "20px",
+    fontSize: isMobile ? "16px" : "20px",
     fontWeight: "bold",
     fontFamily: "Font1, sans-serif",
-    marginTop: "5px",
+    marginTop: isMobile ? "3px" : "5px",
   },
   boostHint: {
-    fontSize: "11px",
+    fontSize: isMobile ? "10px" : "11px",
     color: "#888",
     fontFamily: "Rajdhani",
     textAlign: "center",
-    marginTop: "10px",
+    marginTop: isMobile ? "8px" : "10px",
   },
   boostHintLarge: {
-    fontSize: "14px",
+    fontSize: isMobile ? "12px" : "14px",
     color: "#4DD0E1",
     fontFamily: "Rajdhani",
     textAlign: "center",
-    marginTop: "15px",
-    padding: "15px",
+    marginTop: isMobile ? "12px" : "15px",
+    padding: isMobile ? "12px" : "15px",
     background: "rgba(0, 136, 221, 0.1)",
-    borderRadius: "10px",
+    borderRadius: isMobile ? "8px" : "10px",
     border: "1px solid rgba(0, 136, 221, 0.3)",
   },
   statsRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "20px",
+    gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)",
+    gap: isMobile ? "12px" : "20px",
   },
   statBox: {
-    padding: "30px",
+    padding: isMobile ? "20px" : "30px",
     border: "2px solid #0088DD",
-    borderRadius: "15px",
+    borderRadius: isMobile ? "12px" : "15px",
     background: "#000000",
     boxShadow: "0 0 12px rgba(0, 136, 221, 0.3), inset 0 0 8px rgba(0, 136, 221, 0.05)",
   },
   statLabel: {
-    fontSize: "14px",
+    fontSize: isMobile ? "12px" : "14px",
     color: "#00D9FF",
     textTransform: "uppercase",
-    letterSpacing: "2px",
+    letterSpacing: isMobile ? "1.5px" : "2px",
     fontFamily: "Font1, sans-serif",
-    marginBottom: "12px",
+    marginBottom: isMobile ? "10px" : "12px",
   },
   statValue: {
-    fontSize: "42px",
+    fontSize: isMobile ? "32px" : "42px",
     fontWeight: "bold",
     color: "white",
     textShadow: "0 0 12px rgba(0, 217, 255, 0.5)",
     fontFamily: "Font1, sans-serif",
   },
   infoNote: {
-    marginTop: "15px",
-    padding: "12px 15px",
+    marginTop: isMobile ? "12px" : "15px",
+    padding: isMobile ? "10px 12px" : "12px 15px",
     background: "rgba(0, 136, 221, 0.15)",
     border: "1px solid rgba(0, 136, 221, 0.4)",
-    borderRadius: "8px",
+    borderRadius: isMobile ? "6px" : "8px",
     display: "flex",
     alignItems: "flex-start",
-    gap: "10px",
+    gap: isMobile ? "8px" : "10px",
   },
   infoNoteText: {
-    fontSize: "14px",
+    fontSize: isMobile ? "12px" : "14px",
     color: "#4DD0E1",
     fontFamily: "Rajdhani",
     fontWeight: "500",
@@ -1144,42 +1364,43 @@ const styles = {
     flex: 1,
   },
   paymentSection: {
-    marginTop: "20px",
-    padding: "30px",
+    marginTop: isMobile ? "15px" : "20px",
+    padding: isMobile ? "20px 15px" : "30px",
     border: "2px solid #00D9FF",
-    borderRadius: "15px",
+    borderRadius: isMobile ? "12px" : "15px",
     background: "linear-gradient(180deg, rgba(0, 30, 80, 0.5), rgba(0, 20, 60, 0.7))",
     boxShadow: "0 0 10px rgba(0, 136, 221, 0.3), inset 0 0 8px rgba(0, 136, 221, 0.05)",
   },
   paymentTitle: {
-    fontSize: "20px",
+    fontSize: isMobile ? "14px" : "20px",
     fontWeight: "bold",
     color: "#00FF88",
     textShadow: "0 0 10px rgba(0, 255, 136, 0.5)",
     fontFamily: "Font1, sans-serif",
-    marginBottom: "20px",
+    marginBottom: isMobile ? "15px" : "20px",
     textAlign: "center",
-    letterSpacing: "2px",
+    letterSpacing: isMobile ? "1.5px" : "2px",
   },
   paymentCountdownContainer: {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    gap: "15px",
-    marginBottom: "20px",
+    gap: isMobile ? "8px" : "15px",
+    marginBottom: isMobile ? "15px" : "20px",
+    flexWrap: isMobile ? "wrap" : "nowrap",
   },
   paymentTimerBlock: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    padding: "15px 20px",
+    padding: isMobile ? "12px 15px" : "15px 20px",
     background: "rgba(0, 0, 0, 0.4)",
-    borderRadius: "10px",
+    borderRadius: isMobile ? "8px" : "10px",
     border: "2px solid rgba(0, 217, 255, 0.3)",
-    minWidth: "90px",
+    minWidth: isMobile ? "65px" : "90px",
   },
   paymentTimerValue: {
-    fontSize: "36px",
+    fontSize: isMobile ? "24px" : "36px",
     fontWeight: "bold",
     color: "#00FF88",
     textShadow: "0 0 12px rgba(0, 255, 136, 0.6)",
@@ -1187,34 +1408,34 @@ const styles = {
     lineHeight: "1",
   },
   paymentTimerLabel: {
-    fontSize: "11px",
+    fontSize: isMobile ? "9px" : "11px",
     color: "#00D9FF",
     textTransform: "uppercase",
     letterSpacing: "1px",
     fontFamily: "Rajdhani",
-    marginTop: "8px",
+    marginTop: isMobile ? "6px" : "8px",
   },
   paymentTimerSeparator: {
-    fontSize: "36px",
+    fontSize: isMobile ? "20px" : "36px",
     fontWeight: "bold",
     color: "#00D9FF",
     textShadow: "0 0 10px rgba(0, 217, 255, 0.5)",
     fontFamily: "Font1, sans-serif",
   },
   paymentInfo: {
-    fontSize: "15px",
+    fontSize: isMobile ? "12px" : "15px",
     color: "#4DD0E1",
     fontFamily: "Rajdhani",
     fontWeight: "500",
     textAlign: "center",
-    padding: "12px 20px",
+    padding: isMobile ? "10px 15px" : "12px 20px",
     background: "rgba(0, 136, 221, 0.15)",
     border: "1px solid rgba(0, 136, 221, 0.4)",
-    borderRadius: "8px",
+    borderRadius: isMobile ? "6px" : "8px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
   },
-};
+});
 
 export default NFTDisplay;

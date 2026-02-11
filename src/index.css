@@ -33,7 +33,7 @@ p {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
   .infoTable {
     display: none;
   }
@@ -43,7 +43,7 @@ p {
   }
 
   .neonTitle {
-    font-size: 30px !important;
+    font-size: 36px !important;
   }
 
   .neonButton {
@@ -130,6 +130,17 @@ th {
 .neonButton:hover {
   transform: scale(1.05);
   box-shadow: 0 0 20px rgba(0, 240, 255, 0.7), 0 0 30px rgba(0, 217, 255, 0.4);
+}
+
+/* Development mode input styles */
+input[type="text"]:focus {
+  border-color: #00E5FF;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
+}
+
+input[type="text"]::placeholder {
+  color: rgba(0, 217, 255, 0.5);
+  font-family: 'Rajdhani', sans-serif;
 }
 
 /* Animations for boost progress bars */

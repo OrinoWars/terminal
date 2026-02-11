@@ -1,9 +1,9 @@
 {
   "resetWallets": [
     {
-      "address": "",
-      "resetDate": "",
-      "reason": ""
+      "address": "0x1234567890123456789012345678901234567890",
+      "resetDate": "2026-02-01T12:00:00.000Z",
+      "reason": "Delisted from marketplace - Reset to 0 days"
     }
   ]
 }

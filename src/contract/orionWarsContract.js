@@ -2,7 +2,7 @@ import axios from "axios";
 import metadataList from "../data/metadata.json";
 
 const ALCH_API_KEY = "Jp-feQgo9puqkhqfBKTzJDv99zMK1n3g";
-const contractAddress = "0xBD29d460a390B4Da8C1b7FAD160f2587E8AEB811";
+const contractAddress = "0x95e6F7289244370937f0B16Adc285e9d34e1FF9c";
 
 // Calculate NFT holding duration in wallet
 export const getNFTTransferHistory = async (tokenId, ownerAddress, allTransfers) => {
@@ -57,7 +57,7 @@ export const getNFTs = async (walletAddress) => {
 
     // 1. Fetch NFTs from wallet
     do {
-      const url = `https://eth-sepolia.g.alchemy.com/nft/v2/${ALCH_API_KEY}/getNFTs/`;
+      const url = `https://eth-mainnet.g.alchemy.com/nft/v2/${ALCH_API_KEY}/getNFTs/`;
 
       const response = await axios.get(url, {
         params: {
@@ -90,7 +90,7 @@ export const getNFTs = async (walletAddress) => {
     } while (pageKey);
 
     // 2. Fetch transfer history (single call for entire contract)
-    const transferUrl = `https://eth-sepolia.g.alchemy.com/v2/${ALCH_API_KEY}`;
+    const transferUrl = `https://eth-mainnet.g.alchemy.com/v2/${ALCH_API_KEY}`;
     const transferResponse = await axios.post(transferUrl, {
       jsonrpc: "2.0",
       id: 1,

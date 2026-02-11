@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getNFTs } from '../contract/orionWarsContract';
 import { Button, Container, LoadingText, Title } from '../styles/StyledComponents';
 import NFTDisplay from './NFTDisplay';
@@ -6,6 +6,11 @@ import './WalletConnector.css';
 import { ethers } from 'ethers';
 import { TbHexagon, TbAtom, TbSun, TbAntenna, TbBolt, TbStarFilled, TbWallet } from 'react-icons/tb';
 import { IoCheckmarkCircle } from 'react-icons/io5';
+import { MdAccessTime } from 'react-icons/md';
+import { HiLink } from 'react-icons/hi';
+
+// DEVELOPMENT MODE - Set to true for manual wallet address input
+const DEVELOPMENT_MODE = false; // Change to true for local testing
 
 const WalletConnector = ({ onNFTLoad }) => {
     const [walletAddress, setWalletAddress] = useState("");
@@ -13,7 +18,20 @@ const WalletConnector = ({ onNFTLoad }) => {
     const [walletConnected, setWalletConnected] = useState(false);
     const [nfts, setNfts] = useState([]);
     const [errorMessage, setErrorMessage] = useState("");
+    
+    // Mobile detection
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 1200);
 
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 1200);
+        };
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Production: MetaMask Wallet Connect
     const connectWallet = async () => {
         setLoading(true);
         setErrorMessage("");
@@ -34,15 +52,15 @@ const WalletConnector = ({ onNFTLoad }) => {
             const address = accounts[0];
             setWalletAddress(address);
 
-            // Check if on Sepolia network
+            // Check if on Ethereum Mainnet
             const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-            if (chainId !== '0xaa36a7') { // Sepolia chainId
-                setErrorMessage("Please switch to Sepolia Testnet in MetaMask.");
+            if (chainId !== '0x1') { // Ethereum Mainnet chainId
+                setErrorMessage("Please switch to Ethereum Mainnet in MetaMask.");
                 setLoading(false);
                 return;
             }
 
-            // NFT'leri fetch et
+            // Fetch NFTs
             const nftsData = await getNFTs(address);
             setNfts(nftsData);
             onNFTLoad(nftsData);
@@ -62,6 +80,38 @@ const WalletConnector = ({ onNFTLoad }) => {
         }
     };
 
+    // Development: Manual Wallet Address Input
+    const connectWithAddress = async () => {
+        setLoading(true);
+        setErrorMessage("");
+        
+        try {
+            // Validate address format
+            if (!walletAddress || walletAddress.length !== 42 || !walletAddress.startsWith("0x")) {
+                setErrorMessage("Invalid wallet address format.");
+                setLoading(false);
+                return;
+            }
+
+            // Fetch NFTs
+            const nftsData = await getNFTs(walletAddress);
+            setNfts(nftsData);
+            onNFTLoad(nftsData);
+            setWalletConnected(true);
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setLoading(false);
+
+        } catch (error) {
+            console.error("Error fetching NFTs:", error);
+            setErrorMessage("Failed to fetch NFTs. Please check the address and try again.");
+            setLoading(false);
+        }
+    };
+
+    // Generate styles with mobile responsiveness
+    const styles = getStyles(isMobile);
+
     return (
         <Container>
             {!walletConnected ? (
@@ -72,20 +122,52 @@ const WalletConnector = ({ onNFTLoad }) => {
                     </div>
                     
                     <div style={styles.singleBoxContainer}>
-                        <div
-                            className="neonButton"
-                            onClick={loading ? null : connectWallet}
-                            style={styles.connectButton}
-                        >
-                            {loading ? (
-                                <div className="spinner"></div>
-                            ) : (
-                                <div style={styles.buttonContent}>
-                                    <TbWallet style={styles.buttonIcon} />
-                                    <span style={styles.buttonText}>CONNECT WALLET</span>
+                        {DEVELOPMENT_MODE ? (
+                            // Development Mode: Manual Address Input
+                            <>
+                                <div style={styles.devModeLabel}>
+                                    🔧 DEVELOPMENT MODE - Manual Address Input
                                 </div>
-                            )}
-                        </div>
+                                <input
+                                    type="text"
+                                    placeholder="Enter wallet address (0x...)"
+                                    value={walletAddress}
+                                    onChange={(e) => setWalletAddress(e.target.value)}
+                                    style={styles.addressInput}
+                                    disabled={loading}
+                                />
+                                <div
+                                    className="neonButton"
+                                    onClick={loading ? null : connectWithAddress}
+                                    style={styles.connectButton}
+                                >
+                                    {loading ? (
+                                        <div className="spinner"></div>
+                                    ) : (
+                                        <div style={styles.buttonContent}>
+                                            <TbWallet style={styles.buttonIcon} />
+                                            <span style={styles.buttonText}>LOAD WALLET</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            // Production Mode: MetaMask Connect
+                            <div
+                                className="neonButton"
+                                onClick={loading ? null : connectWallet}
+                                style={styles.connectButton}
+                            >
+                                {loading ? (
+                                    <div className="spinner"></div>
+                                ) : (
+                                    <div style={styles.buttonContent}>
+                                        <TbWallet style={styles.buttonIcon} />
+                                        <span style={styles.buttonText}>CONNECT WALLET</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         
                         {errorMessage && <p style={{ color: '#ff0000', marginBottom: '20px', fontSize: '14px', textShadow: '0 0 10px #ff0000' }}>{errorMessage}</p>}
                         
@@ -134,14 +216,14 @@ const WalletConnector = ({ onNFTLoad }) => {
                             <h3 style={styles.sectionTitle}>Loyalty Boost Protocols</h3>
                             <div style={styles.loyaltySection}>
                                 <div style={styles.loyaltyItem}>
-                                    <strong style={styles.loyaltyTitle}>⏱️ Signal Stability (Uptime Bonus)</strong>
+                                    <strong style={styles.loyaltyTitle}><MdAccessTime style={{verticalAlign: 'middle', marginRight: '8px'}} /> Signal Stability (Uptime Bonus)</strong>
                                     <p style={styles.loyaltyDesc}>
                                         Efficiency increases based on continuous custody duration:
                                         7 days: +5% • 15 days: +10% • 20 days: +15% • 30+ days: +20% (Max)
                                     </p>
                                 </div>
                                 <div style={styles.loyaltyItem}>
-                                    <strong style={styles.loyaltyTitle}>🔗 Hexa-Link (Cluster Bonus)</strong>
+                                    <strong style={styles.loyaltyTitle}><HiLink style={{verticalAlign: 'middle', marginRight: '8px'}} /> Hexa-Link (Cluster Bonus)</strong>
                                     <p style={styles.loyaltyDesc}>
                                         Complete sets of 6 distinct node types earn +10% boost per set. Stackable!
                                     </p>
@@ -177,29 +259,29 @@ const WalletConnector = ({ onNFTLoad }) => {
     );
 };
 
-const styles = {
+const getStyles = (isMobile) => ({
     mainWrapper: {
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '0 20px',
+        padding: isMobile ? '0 10px' : '0 20px',
     },
     brandTitleSection: {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '12px',
-        marginTop: '60px',
-        marginBottom: '50px',
+        gap: isMobile ? '8px' : '12px',
+        marginTop: isMobile ? '30px' : '60px',
+        marginBottom: isMobile ? '25px' : '50px',
     },
     brandTitle: {
-        fontSize: '18px',
+        fontSize: isMobile ? '14px' : '18px',
         fontWeight: '700',
         color: '#00D9FF',
         textShadow: '0 0 20px rgba(0, 217, 255, 0.6)',
         fontFamily: 'Rajdhani',
-        letterSpacing: '6px',
+        letterSpacing: isMobile ? '4px' : '6px',
         textTransform: 'uppercase',
     },
     mainTitle: {
@@ -208,9 +290,9 @@ const styles = {
     singleBoxContainer: {
         width: '100%',
         maxWidth: '800px',
-        padding: '50px',
+        padding: isMobile ? '25px 20px' : '50px',
         border: '2px solid rgba(0, 217, 255, 0.4)',
-        borderRadius: '20px',
+        borderRadius: isMobile ? '15px' : '20px',
         background: 'linear-gradient(135deg, rgba(0, 20, 60, 0.4), rgba(0, 10, 40, 0.6))',
         boxShadow: '0 8px 32px rgba(0, 119, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(10px)',
@@ -219,16 +301,16 @@ const styles = {
         width: '100%',
         height: '1px',
         background: 'linear-gradient(90deg, transparent, rgba(0, 217, 255, 0.5), transparent)',
-        marginBottom: '40px',
-        marginTop: '10px',
+        marginBottom: isMobile ? '25px' : '40px',
+        marginTop: isMobile ? '8px' : '10px',
     },
     infoContent: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '35px',
+        gap: isMobile ? '25px' : '35px',
     },
     description: {
-        fontSize: '17px',
+        fontSize: isMobile ? '15px' : '17px',
         color: '#B0E5F0',
         fontFamily: 'Rajdhani',
         lineHeight: '1.7',
@@ -237,52 +319,52 @@ const styles = {
         fontWeight: '500',
     },
     sectionTitle: {
-        fontSize: '18px',
+        fontSize: isMobile ? '16px' : '18px',
         fontWeight: '700',
         color: '#00E5FF',
         textShadow: '0 0 10px rgba(0, 229, 255, 0.5)',
         fontFamily: 'Rajdhani',
         marginBottom: '0px',
         textAlign: 'left',
-        letterSpacing: '3px',
+        letterSpacing: isMobile ? '2px' : '3px',
         textTransform: 'uppercase',
-        borderLeft: '4px solid #00E5FF',
-        paddingLeft: '15px',
+        borderLeft: isMobile ? '3px solid #00E5FF' : '4px solid #00E5FF',
+        paddingLeft: isMobile ? '10px' : '15px',
     },
     nodeTypesTable: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '10px',
+        gap: isMobile ? '8px' : '10px',
     },
     nodeRow: {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '16px 24px',
+        padding: isMobile ? '12px 16px' : '16px 24px',
         background: 'rgba(0, 136, 221, 0.08)',
         border: '1px solid rgba(0, 217, 255, 0.2)',
-        borderRadius: '12px',
+        borderRadius: isMobile ? '10px' : '12px',
         transition: 'all 0.3s ease',
     },
     nodeEmoji: {
-        fontSize: '26px',
+        fontSize: isMobile ? '22px' : '26px',
         color: '#00E5FF',
-        minWidth: '45px',
+        minWidth: isMobile ? '35px' : '45px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
     },
     nodeName: {
-        fontSize: '15px',
+        fontSize: isMobile ? '14px' : '15px',
         fontWeight: '600',
         color: '#B0E5F0',
         fontFamily: 'Rajdhani',
-        marginLeft: '20px',
-        letterSpacing: '1.5px',
+        marginLeft: isMobile ? '12px' : '20px',
+        letterSpacing: isMobile ? '1px' : '1.5px',
     },
     nodeYield: {
-        fontSize: '17px',
+        fontSize: isMobile ? '15px' : '17px',
         fontWeight: 'bold',
         color: '#00FF88',
         fontFamily: 'Rajdhani',
@@ -293,25 +375,25 @@ const styles = {
     loyaltySection: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px',
+        gap: isMobile ? '10px' : '12px',
     },
     loyaltyItem: {
-        padding: '20px 24px',
+        padding: isMobile ? '16px 18px' : '20px 24px',
         background: 'rgba(0, 30, 80, 0.3)',
         border: '1px solid rgba(0, 217, 255, 0.2)',
-        borderRadius: '12px',
+        borderRadius: isMobile ? '10px' : '12px',
     },
     loyaltyTitle: {
         display: 'block',
-        fontSize: '15px',
+        fontSize: isMobile ? '14px' : '15px',
         color: '#00E5FF',
-        marginBottom: '8px',
+        marginBottom: isMobile ? '6px' : '8px',
         fontFamily: 'Rajdhani',
         fontWeight: '600',
-        letterSpacing: '1px',
+        letterSpacing: isMobile ? '0.8px' : '1px',
     },
     loyaltyDesc: {
-        fontSize: '14px',
+        fontSize: isMobile ? '13px' : '14px',
         color: '#B0E5F0',
         fontFamily: 'Rajdhani',
         lineHeight: '1.6',
@@ -321,57 +403,87 @@ const styles = {
     featuresSection: {
         display: 'flex',
         flexDirection: 'column',
-        gap: '10px',
+        gap: isMobile ? '8px' : '10px',
         marginTop: '0',
     },
     featureItem: {
         display: 'flex',
         alignItems: 'center',
-        gap: '15px',
-        padding: '14px 20px',
+        gap: isMobile ? '12px' : '15px',
+        padding: isMobile ? '12px 16px' : '14px 20px',
         background: 'rgba(0, 136, 221, 0.06)',
-        borderRadius: '10px',
+        borderRadius: isMobile ? '8px' : '10px',
         border: '1px solid rgba(0, 217, 255, 0.15)',
     },
     featureIcon: {
-        fontSize: '20px',
+        fontSize: isMobile ? '20px' : '20px',
         color: '#00FF88',
         flexShrink: 0,
     },
     featureText: {
-        fontSize: '15px',
+        fontSize: isMobile ? '14px' : '15px',
         color: '#B0E5F0',
         fontFamily: 'Rajdhani',
         fontWeight: '500',
-        letterSpacing: '0.5px',
+        letterSpacing: isMobile ? '0.3px' : '0.5px',
     },
     connectButton: {
-        width: '60%',
-        maxWidth: '400px',
-        minWidth: '280px',
-        margin: '0 auto 40px auto',
+        width: isMobile ? '90%' : '60%',
+        maxWidth: isMobile ? '350px' : '400px',
+        minWidth: isMobile ? '250px' : '280px',
+        margin: isMobile ? '0 auto 25px auto' : '0 auto 40px auto',
         padding: '0',
         height: 'auto',
-        minHeight: '85px',
+        minHeight: isMobile ? '75px' : '85px',
     },
     buttonContent: {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '8px',
+        gap: isMobile ? '6px' : '8px',
         width: '100%',
-        padding: '16px 20px',
+        padding: isMobile ? '14px 18px' : '16px 20px',
     },
     buttonIcon: {
-        fontSize: '32px',
+        fontSize: isMobile ? '28px' : '32px',
         flexShrink: 0,
     },
     buttonText: {
-        fontSize: '15px',
+        fontSize: isMobile ? '13px' : '15px',
         fontWeight: '700',
-        letterSpacing: '2.5px',
+        letterSpacing: isMobile ? '2px' : '2.5px',
     },
-};
+    devModeLabel: {
+        fontSize: isMobile ? '11px' : '13px',
+        color: '#FFB366',
+        textTransform: 'uppercase',
+        letterSpacing: '1.5px',
+        fontFamily: 'Rajdhani',
+        fontWeight: '700',
+        marginBottom: '20px',
+        textAlign: 'center',
+        padding: '8px 16px',
+        background: 'rgba(255, 136, 0, 0.15)',
+        border: '1px solid rgba(255, 136, 0, 0.4)',
+        borderRadius: '8px',
+    },
+    addressInput: {
+        width: '100%',
+        padding: isMobile ? '14px 16px' : '16px 20px',
+        fontSize: isMobile ? '13px' : '15px',
+        fontFamily: 'Rajdhani',
+        fontWeight: '600',
+        color: '#00E5FF',
+        background: 'rgba(0, 20, 60, 0.6)',
+        border: '2px solid rgba(0, 217, 255, 0.4)',
+        borderRadius: '12px',
+        outline: 'none',
+        textAlign: 'center',
+        letterSpacing: '0.5px',
+        marginBottom: '20px',
+        transition: 'all 0.3s ease',
+    },
+});
 
 export default WalletConnector;

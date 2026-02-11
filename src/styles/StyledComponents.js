@@ -32,6 +32,10 @@ export const Container = styled.div`
   width: 70%;
   text-align: center;
   overflow: auto; /* Scroll için eklendi */
+  
+  @media (max-width: 1700px) {
+    width: 95%;
+  }
 `;
 
 export const Button = styled.button`
