@@ -187,7 +187,8 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
   }, 0);
 
   // Toplam gelir = Base income * boost multiplier
-  const totalFinalIncome = baseIncome * totalBoostMultiplier;
+  // EĞER BLACKLISTED İSE YIELD SIFIRLANIR
+  const totalFinalIncome = isBlacklisted ? 0 : (baseIncome * totalBoostMultiplier);
 
   // Live timer update
   useEffect(() => {
@@ -307,7 +308,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
         <div style={styles.nodeGrid}>
           {allNodeTypes.map(nodeType => {
             const count = nodeTypeCounts[nodeType] || 0;
-            const income = nodeTypeIncomes[nodeType] || 0;
+            const income = isBlacklisted ? 0 : (nodeTypeIncomes[nodeType] || 0);
             const isOwned = count > 0;
 
             return (
@@ -333,6 +334,11 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                   {income.toFixed(2)} USDC
                 </div>
                 <div style={styles.nodeIncomeLabel}>Monthly Yield</div>
+                {isBlacklisted && isOwned && (
+                  <div style={{color: '#FF4444', fontSize: isMobile ? '9px' : '11px', marginTop: '5px', fontWeight: 'bold'}}>
+                    ⚠️ LISTING DETECTED
+                  </div>
+                )}
               </div>
             );
           })}
@@ -362,11 +368,11 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
               
               {isBlacklisted ? (
                 <div style={styles.yieldWarning}>
-                  <MdWarning style={{fontSize: isMobile ? '16px' : '18px', marginRight: '6px'}} />
+                  <MdWarning style={{fontSize: isMobile ? '32px' : '30px', flexShrink: 0, alignSelf: isMobile ? 'center' : 'center'}} />
                   <div style={styles.yieldWarningText}>
-                    <strong>LISTING DETECTED - BOOSTS DISABLED</strong>
-                    <div style={{fontSize: isMobile ? '11px' : '12px', marginTop: '4px', opacity: 0.9}}>
-                      Remove all listings to restore +{getUptimeBonus(oldestNFTDays) + (completeSets * 10)}% boost
+                    <strong style={{fontSize: isMobile ? '16px' : '20px', display: 'block', marginBottom: '8px', textAlign: 'center'}}>LISTING DETECTED</strong>
+                    <div style={{fontSize: isMobile ? '13px' : '16px', opacity: 0.95, lineHeight: '1.6', textAlign: 'center'}}>
+                      If you delist all Node NFTs within 24 hours, your Yields and Boosts will resume where they left off. Failure to do so will result in PERMANENT disqualification from the Yield Protocol.
                     </div>
                   </div>
                 </div>
@@ -455,7 +461,14 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                 <div style={styles.boostDescriptionLarge}>
                   <span style={{color: '#00E5FF'}}>Holding since:</span> {oldestDate} • 
                   <span style={{color: '#00E5FF'}}> Duration:</span> {oldestNFTDays} days
-                  {isBlacklisted && <div style={{color: '#FF4444', marginTop: '8px', fontSize: '14px'}}>❌ Disabled - Wallet blacklisted</div>}
+                  {isBlacklisted && (
+                    <div style={{color: '#FF4444', marginTop: '10px', fontSize: isMobile ? '12px' : '14px', lineHeight: '1.5', padding: '8px', background: 'rgba(255, 68, 68, 0.1)', borderRadius: '6px', border: '1px solid rgba(255, 68, 68, 0.3)'}}>
+                      <strong>⚠️ LISTING DETECTED</strong>
+                      <div style={{fontSize: isMobile ? '11px' : '13px', marginTop: '4px', opacity: 0.9}}>
+                      If you delist all Node NFTs within 24 hours, your Yields and Boosts will resume where they left off. Failure to do so will result in PERMANENT disqualification from the Yield Protocol.
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Görsel Progress Bar */}
@@ -517,7 +530,7 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
               {/* Signal Stability Info Note */}
               <div style={styles.infoNote}>
                 <div style={styles.infoNoteText}>
-                  Our system scans all Nodes 6 times daily at random intervals. If any marketplace listing is detected during a scan, all boosts will be immediately disabled.
+                  Our system scans all Nodes 6 times daily at random intervals. If any marketplace listing is detected during a scan, monthly yield will be reset to zero and all boosts will be immediately disabled.
                 </div>
               </div>
 
@@ -547,7 +560,14 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
                 <div style={styles.boostDescriptionLarge}>
                   <span style={{color: '#00E5FF'}}>Complete Sets:</span> {completeSets} • 
                   <span style={{color: '#00E5FF'}}> Bonus per set:</span> +10%
-                  {isBlacklisted && <div style={{color: '#FF4444', marginTop: '8px', fontSize: '14px'}}>❌ Disabled - Wallet blacklisted</div>}
+                  {isBlacklisted && (
+                    <div style={{color: '#FF4444', marginTop: '10px', fontSize: isMobile ? '12px' : '14px', lineHeight: '1.5', padding: '8px', background: 'rgba(255, 68, 68, 0.1)', borderRadius: '6px', border: '1px solid rgba(255, 68, 68, 0.3)'}}>
+                      <strong>⚠️ LISTING DETECTED</strong>
+                      <div style={{fontSize: isMobile ? '11px' : '13px', marginTop: '4px', opacity: 0.9}}>
+                      If you delist all Node NFTs within 24 hours, your Yields and Boosts will resume where they left off. Failure to do so will result in PERMANENT disqualification from the Yield Protocol.
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div style={styles.hexaLinkGridLarge}>
@@ -595,9 +615,9 @@ const NFTDisplay = ({ nfts, walletAddress }) => {
               <div style={styles.warningContent}>
                 <div style={styles.warningTitle}>CRITICAL NOTICE</div>
                 <div style={styles.warningText}>
-                  Listing <span style={{fontWeight: 'bold', color: '#FF6666'}}>ANY</span> node will <span style={{fontWeight: 'bold', color: '#FF6666'}}>DISABLE ALL BOOSTS</span> for your <span style={{fontWeight: 'bold', color: '#FF6666'}}>ENTIRE COLLECTION</span> and reset your <span style={{fontWeight: 'bold', color: '#FF6666'}}>SIGNAL STABILITY</span> to <span style={{fontWeight: 'bold', color: '#FF6666'}}>ZERO</span>.
+                  Listing <span style={{fontWeight: 'bold', color: '#FF6666'}}>ANY</span> Node NFT on a marketplace will result in <span style={{fontWeight: 'bold', color: '#FF6666'}}>PERMANENT DISQUALIFICATION</span> from the Yield Protocol. 
                   <br/><br style={{lineHeight: '0.2', margin: '0', display: 'block', height: '4px'}}/>
-                  Your Signal Stability will remain at 0 days until you delist. Upon delisting, Signal Stability starts from day 0 — your previous holding period is <span style={{fontWeight: 'bold', color: '#FF6666'}}>NOT</span> restored.
+                  Your <span style={{fontWeight: 'bold', color: '#FF6666'}}>ENTIRE WALLET</span> will be blacklisted and the yield of <span style={{fontWeight: 'bold', color: '#FF6666'}}>every Node NFT</span> you own will be permanently reduced to zero — not only the one listed.
                 </div>
               </div>
             </div>
@@ -864,21 +884,23 @@ const getStyles = (isMobile) => ({
   },
   yieldWarning: {
     display: "flex",
-    alignItems: "flex-start",
-    gap: isMobile ? "8px" : "10px",
-    padding: isMobile ? "12px" : "15px",
-    background: "linear-gradient(135deg, rgba(255, 68, 68, 0.15), rgba(255, 136, 136, 0.1))",
-    border: "2px solid rgba(255, 68, 68, 0.5)",
-    borderRadius: isMobile ? "8px" : "10px",
+    flexDirection: isMobile ? "column" : "row",
+    alignItems: "center",
+    gap: isMobile ? "12px" : "16px",
+    padding: isMobile ? "16px 14px" : "20px 18px",
+    background: "linear-gradient(135deg, rgba(255, 68, 68, 0.2), rgba(255, 136, 136, 0.15))",
+    border: "2px solid rgba(255, 68, 68, 0.6)",
+    borderRadius: isMobile ? "10px" : "12px",
     color: "#FF6666",
-    marginTop: isMobile ? "4px" : "6px",
+    marginTop: isMobile ? "6px" : "10px",
+    boxShadow: "0 0 15px rgba(255, 68, 68, 0.3)",
   },
   yieldWarningText: {
     flex: 1,
-    fontSize: isMobile ? "12px" : "14px",
+    fontSize: isMobile ? "13px" : "15px",
     fontFamily: "Rajdhani",
     fontWeight: "600",
-    lineHeight: "1.4",
+    lineHeight: "1.5",
   },
   yieldBreakdown: {
     display: "flex",
