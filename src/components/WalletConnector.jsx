@@ -10,7 +10,7 @@ import { MdAccessTime } from 'react-icons/md';
 import { HiLink } from 'react-icons/hi';
 
 // DEVELOPMENT MODE - Set to true for manual wallet address input
-const DEVELOPMENT_MODE = false; // Change to false before production deploy
+const DEVELOPMENT_MODE = true; // Change to false before production deploy
 
 const WalletConnector = ({ onNFTLoad }) => {
     const [walletAddress, setWalletAddress] = useState("");

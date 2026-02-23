@@ -1,3 +1,13 @@
 {
-  "blacklistedWallets": ["0xC25dB20e7BB7c7DB1Ae7769D673dE38BFffDa406"]
+  "blacklistedWallets": [
+    "0x00e6b501601c069476acdb9b8a3c04d8f735aed0",
+    "0xC25dB20e7BB7c7DB1Ae7769D673dE38BFffDa406",
+    "0xdc74c856929414baefaf08523f95a54bfc558253",
+    "0x7e005b7d3b1c1b5fe1dd790749c56ebf5fa819fc",
+    "0x97fb3f63b9ff8089479b775311dcb75a2b8f8202",
+    "0x292Ce89FEA9b4930845ee600e91A65e726d96134",
+    "0x74364a654d380a8979ae81fdb69be2b68ee73982",
+    "0x91f7dcd53665572943b6d8145d1a2cee7a49d7b1",
+    "0x38b541dbec76b71de9591d394c25e30da213a7a3"
+  ]
 }
